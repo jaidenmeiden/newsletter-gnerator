@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  newsletter_app:
+    # Tell Docker Compose to use the Dockerfile in the current directory to build the image.
+    build: .
+    # Map the port 8501 of the host (your Manjaro) to the port 8501 of the container.
+    ports:
+      - "8501:8501"
+    # Mount the current local directory inside the container.
+    # This is CRITICAL: If you edit 'app.py' on your local machine, the changes will be reflected without having to rebuild the image.
+    volumes:
+      - .:/app
+    # Restart the application if it fails, which is useful for development.
+    restart: on-failure
+    # Name for the container
+    container_name: newsletter_generator_container
