@@ -78,7 +78,7 @@ class NewsletterGenerator:
         layers: List[Dict],
         footer_config: Dict,
         max_width: int = 1000,
-        font_family: str = "Arial, sans-serif"
+        font_family: str = "Oswald, sans-serif"
     ) -> str:
         """
         Generate complete HTML newsletter with inline CSS.
@@ -96,6 +96,9 @@ class NewsletterGenerator:
         Returns:
             Complete HTML string ready for email
         """
+        # Check if Oswald font is selected and add Google Fonts link
+        include_google_fonts = 'Oswald' in font_family
+        
         html_parts = [
             '<!DOCTYPE html>',
             '<html lang="en">',
@@ -103,6 +106,13 @@ class NewsletterGenerator:
             f'<meta charset="UTF-8">',
             f'<meta name="viewport" content="width=device-width, initial-scale=1.0">',
             f'<title>{subject}</title>',
+        ]
+        
+        # Add Google Fonts link if Oswald is selected
+        if include_google_fonts:
+            html_parts.append('<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">')
+        
+        html_parts.extend([
             '</head>',
             f'<body style="margin: 0; padding: 0; font-family: {font_family}; background-color: #f4f4f4;">',
             '<table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f4f4f4;">',
@@ -110,7 +120,7 @@ class NewsletterGenerator:
             '<td align="center" style="padding: 20px 0;">',
             f'<table role="presentation" style="width: {max_width}px; max-width: 100%; border-collapse: collapse; '
             f'background-color: {background_color}; margin: 0 auto;">',
-        ]
+        ])
 
         html_parts.extend(NewsletterGenerator._generate_header_html(subject, header_config))
         
@@ -466,6 +476,7 @@ def render_sidebar() -> Dict:
         font_family = st.selectbox(
             "Font Family",
             options=[
+                "Oswald, sans-serif",
                 "Arial, sans-serif",
                 "Helvetica, sans-serif",
                 "Georgia, serif",
