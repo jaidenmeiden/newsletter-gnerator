@@ -307,11 +307,22 @@ class NewsletterGenerator:
         
         # Main content
         if content:
-            formatted_content = content.replace('\n', '<br>')
-            html_parts.append(
-                f'<p style="color: {content_color}; margin: 0; font-size: {content_font_size}px; font-weight: {content_weight}; line-height: 1.5;">'
-                f'{formatted_content}</p>'
-            )
+            # Check if content is HTML (from rich text editor)
+            if '<' in content and '>' in content:
+                # Content is HTML from the editor (usually starts with <p>)
+                # Wrap it in a container with base styles (color and font-size)
+                # This allows inline styles (like specific word colors) to override the base
+                html_parts.append(
+                    f'<div style="color: {content_color}; font-size: {content_font_size}px; font-weight: {content_weight}; margin: 0; line-height: 1.5;">'
+                )
+                html_parts.append(content)
+                html_parts.append('</div>')
+            else:
+                # Plain text, convert newlines to <br> tags
+                formatted_content = content.replace('\n', '<br>')
+                html_parts.append(
+                    f'<p style="color: {content_color}; margin: 0; font-size: {content_font_size}px; font-weight: {content_weight}; line-height: 1.5;">{formatted_content}</p>'
+                )
         
         return html_parts
 
@@ -401,13 +412,26 @@ class NewsletterGenerator:
         
         # 2.4. Header Text Row
         if header_text:
-            # Convert newlines to <br> tags
-            formatted_text = header_text.replace('\n', '<br>')
             html_parts.append('<tr>')
             html_parts.append(f'<td style="padding: 0 20px 20px 20px; background-color: {header_bg_color};">')
-            html_parts.append(
-                f'<p style="color: {text_color}; font-size: {text_font_size}px; margin: 0; font-weight: {text_weight}; line-height: 1.5;">{formatted_text}</p>'
-            )
+            
+            # Check if header_text is HTML (from rich text editor)
+            if '<' in header_text and '>' in header_text:
+                # Content is HTML from the editor (usually starts with <p>)
+                # Wrap it in a container with base styles (color and font-size)
+                # This allows inline styles (like specific word colors) to override the base
+                html_parts.append(
+                    f'<div style="color: {text_color}; font-size: {text_font_size}px; font-weight: {text_weight}; margin: 0; line-height: 1.5;">'
+                )
+                html_parts.append(header_text)
+                html_parts.append('</div>')
+            else:
+                # Plain text, convert newlines to <br> tags
+                formatted_text = header_text.replace('\n', '<br>')
+                html_parts.append(
+                    f'<p style="color: {text_color}; font-size: {text_font_size}px; margin: 0; font-weight: {text_weight}; line-height: 1.5;">{formatted_text}</p>'
+                )
+            
             html_parts.append('</td>')
             html_parts.append('</tr>')
 
