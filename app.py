@@ -816,7 +816,7 @@ def render_sidebar() -> Dict:
         
         email_subject = st.text_input(
             "Email Subject",
-            value=st.session_state.get("Email Subject", "Newsletter"),
+            value=st.session_state.get("Email Subject", ""),
             key="Email Subject",
             help="The subject line for your newsletter email"
         )
@@ -919,7 +919,7 @@ def render_header_config(email_subject: str) -> Dict:
         pre_header_text = st.text_input(
             "Pre-Header Text (Optional)",
             value="",
-            placeholder="Hidden text for email preview",
+            placeholder="e.g., Hidden text for email preview",
             key="pre_header_text",
             help="Hidden text shown in email preview (optional - only included if filled)"
         )
@@ -933,6 +933,13 @@ def render_header_config(email_subject: str) -> Dict:
     
     # Second row: Image Source
     image_source_index = st.session_state.get("header_image_source", 0)
+    # Ensure index is an integer
+    try:
+        image_source_index = int(image_source_index) if image_source_index is not None else 0
+    except (ValueError, TypeError):
+        image_source_index = 0
+    # Ensure index is within valid range
+    image_source_index = max(0, min(1, image_source_index))
     image_source = st.radio(
         "Image Source",
         options=["External URL", "Upload Image (Base64)"],
@@ -994,8 +1001,8 @@ def render_header_config(email_subject: str) -> Dict:
     with col_title_1:
         header_title = st.text_input(
             "Header Title",
-            value="Sehr geehrte/r Frau/Herr....",
-            placeholder="Example: Sehr geehrte/r Frau/Herr...",
+            value="",
+            placeholder="e.g., Sehr geehrte/r Frau/Herr...",
             key="header_title",
             help="The title displayed in the newsletter header"
         )
@@ -1027,8 +1034,8 @@ def render_header_config(email_subject: str) -> Dict:
     # Header Text with styling
     st.markdown("**Header Text**")
     header_text = st_quill(
-        value="ich freue mich Ihnen unsere neuesten Angebote der beruflichen Fortbildungszentren der Bayerischen Wirtschaft (bfz) gGmbH vorzustellen. Mit unserer Jahrzehnten langen Erfahrung sind wir Ihr erfolgreicher Partner für Beratung, Bildung und Integration für Arbeitnehmer*innen.",
-        placeholder="Enter header text here...",
+        value="",
+        placeholder="e.g., Enter header text here...",
         html=True,  # Return HTML content
         key="header_text",
         toolbar=[
@@ -1090,10 +1097,18 @@ def render_footer_config() -> Dict:
     # First row: Footer alignment | Footer Background Color
     col_row1_1, col_row1_2 = st.columns(2)
     with col_row1_1:
+        footer_alignment_index = st.session_state.get("footer_alignment", 0)
+        # Ensure index is an integer
+        try:
+            footer_alignment_index = int(footer_alignment_index) if footer_alignment_index is not None else 0
+        except (ValueError, TypeError):
+            footer_alignment_index = 0
+        # Ensure index is within valid range
+        footer_alignment_index = max(0, min(2, footer_alignment_index))
         footer_alignment = st.selectbox(
             "Footer Alignment",
             options=['Left', 'Center', 'Right'],
-            index=0,
+            index=footer_alignment_index,
             key="footer_alignment",
             help="Alignment of the entire footer content (image and text)"
         )
@@ -1107,6 +1122,13 @@ def render_footer_config() -> Dict:
     
     # Second row: Image Source (full width)
     image_source_index = st.session_state.get("footer_image_source", 0)
+    # Ensure index is an integer
+    try:
+        image_source_index = int(image_source_index) if image_source_index is not None else 0
+    except (ValueError, TypeError):
+        image_source_index = 0
+    # Ensure index is within valid range
+    image_source_index = max(0, min(1, image_source_index))
     image_source = st.radio(
         "Image Source",
         options=["External URL", "Upload Image (Base64)"],
@@ -1168,8 +1190,8 @@ def render_footer_config() -> Dict:
     with col_cn_1:
         company_name = st.text_input(
             "Company Name",
-            value="Berufliche Fortbildungszentren der Bayerischen Wirtschaft (bfz) gemeinnützige GmbH",
-            placeholder="Example: bfz gGmbH",
+            value="",
+            placeholder="e.g., bfz gGmbH",
             key="footer_company_name",
             help="Company or organization name"
         )
@@ -1203,8 +1225,8 @@ def render_footer_config() -> Dict:
     with col_addr_1:
         address = st.text_area(
             "Company Address",
-            value="Sitz/Registergericht: München, Registernummer: HRB 121447",
-            placeholder="Example: Registered Office/Commercial Register: Munich, Registration Number: HRB 121447",
+            value="",
+            placeholder="e.g., Registered Office/Commercial Register: Munich, Registration Number: HRB 121447",
             key="footer_address",
             help="Company address and registration information",
             height=80
@@ -1239,8 +1261,8 @@ def render_footer_config() -> Dict:
     with col_dir_1:
         directors = st.text_area(
             "Responsibles",
-            value="Geschäftsführer: Sandra Stenger, Wolfgang Braun, Jörg Plesch",
-            placeholder="Example: Managing Directors: Sandra Stenger, Wolfgang Braun, Jörg Plesch",
+            value="",
+            placeholder="e.g., Managing Directors: Sandra Stenger, Wolfgang Braun, Jörg Plesch",
             key="footer_directors",
             help="Company directors or responsible persons",
             height=60
@@ -1276,8 +1298,8 @@ def render_footer_config() -> Dict:
     with col_label_1:
         social_media_label = st.text_input(
             "Social Media Section Label",
-            value="Die Social-Media-Kanäle der bfz gGmbH:",
-            placeholder="Example: Our Social Media Channels:",
+            value="",
+            placeholder="e.g., Our Social Media Channels",
             key="footer_social_label",
             help="Label text displayed above social media links"
         )
@@ -1305,9 +1327,18 @@ def render_footer_config() -> Dict:
             key="footer_social_label_bold",
             help="Make social media label bold"
         )
+    social_media_type_index = st.session_state.get("footer_social_type", 0)
+    # Ensure index is an integer
+    try:
+        social_media_type_index = int(social_media_type_index) if social_media_type_index is not None else 0
+    except (ValueError, TypeError):
+        social_media_type_index = 0
+    # Ensure index is within valid range
+    social_media_type_index = max(0, min(1, social_media_type_index))
     social_media_type = st.radio(
         "Social Media Type",
         options=["URLs Only", "Images"],
+        index=social_media_type_index,
         key="footer_social_type",
         help="Choose between text links or image icons"
     )
@@ -1330,7 +1361,7 @@ def render_footer_config() -> Dict:
     with col_social_row1_1:
         facebook_url = st.text_input(
             "Facebook URL",
-            value="https://facebbok.com",
+            placeholder="e.g., https://facebook.com",
             key="footer_facebook",
             help="Facebook page URL"
         )
@@ -1347,7 +1378,7 @@ def render_footer_config() -> Dict:
     with col_social_row1_2:
         linkedin_url = st.text_input(
             "LinkedIn URL",
-            value="https://linkedin.com",
+            placeholder="e.g., https://linkedin.com",
             key="footer_linkedin",
             help="LinkedIn page URL"
         )
@@ -1366,7 +1397,7 @@ def render_footer_config() -> Dict:
     with col_social_row2_1:
         xing_url = st.text_input(
             "Xing URL",
-            value="https://xing.com",
+            placeholder="e.g., https://xing.com",
             key="footer_xing",
             help="Xing page URL"
         )
@@ -1383,7 +1414,7 @@ def render_footer_config() -> Dict:
     with col_social_row2_2:
         instagram_url = st.text_input(
             "Instagram URL",
-            value="https://instagram.com",
+            placeholder="e.g., https://instagram.com",
             key="footer_instagram",
             help="Instagram page URL"
         )
@@ -1462,14 +1493,14 @@ def render_subscription_config() -> Dict:
     with col1:
         company_name = st.text_input(
             "Company Name",
-            value="Your Company Name",
+            placeholder="e.g., Your Company Name",
             key="company_name",
             help="Your company or organization name"
         )
         
         address = st.text_area(
             "Company Address",
-            value="123 Main Street, Suite 400, City, State 12345",
+            placeholder="e.g., 123 Main Street, Suite 400, City, State 12345",
             key="address",
             help="Company physical address",
             height=100
@@ -1477,7 +1508,7 @@ def render_subscription_config() -> Dict:
         
         copyright_text = st.text_input(
             "Copyright Text",
-            value="© 2024 Your Company Name. All rights reserved.",
+            placeholder="e.g., © 2024 Your Company Name. All rights reserved.",
             key="copyright_text",
             help="Copyright notice text (you can use {company} placeholder)"
         )
@@ -1485,7 +1516,7 @@ def render_subscription_config() -> Dict:
     with col2:
         disclaimer_text = st.text_area(
             "Disclaimer Text",
-            value="This email was sent to you because you subscribed to our newsletter.",
+            placeholder="e.g., This email was sent to you because you subscribed to our newsletter.",
             key="disclaimer_text",
             help="Legal disclaimer text",
             height=100
@@ -1493,14 +1524,14 @@ def render_subscription_config() -> Dict:
         
         unsubscribe_link = st.text_input(
             "Unsubscribe Link",
-            value="#UNSUBSCRIBE_LINK",
+            placeholder="e.g., Unsubscribe Link",
             key="unsubscribe_link",
             help="URL for unsubscribe link"
         )
         
         view_online_link = st.text_input(
             "View Online Link",
-            value="#VIEW_ONLINE_LINK",
+            placeholder="e.g., View Online Link",
             key="view_online_link",
             help="URL for viewing newsletter online"
         )
@@ -1541,8 +1572,8 @@ def render_layer_form(layer_number: int) -> Dict:
         title = st.text_input(
             f"Title 1 (H2) - Layer {layer_number}",
             key=f"title_{layer_number}",
-            value="P.I.A SPEED Einzelcoaching",
-            placeholder="Enter main title..."
+            value="",
+            placeholder="e.g., Enter main title..."
         )
     with col_title1_2:
         title_color = st.color_picker(
@@ -1568,8 +1599,8 @@ def render_layer_form(layer_number: int) -> Dict:
         subtitle = st.text_input(
             f"Title 2 (H3) - Layer {layer_number}",
             key=f"subtitle_{layer_number}",
-            value="Perspektive. Integration. Arbeit.",
-            placeholder="Enter subtitle (green)..."
+            value="",
+            placeholder="e.g., Enter subtitle (green)..."
         )
     with col_title2_2:
         subtitle_color = st.color_picker(
@@ -1602,8 +1633,8 @@ def render_layer_form(layer_number: int) -> Dict:
         subtitle2 = st.text_input(
             f"Title 3 (H4) - Layer {layer_number}",
             key=f"subtitle2_{layer_number}",
-            value="Schnell und sicher im Umgang mit Bewerbungen und E-Service",
-            placeholder="Enter third title..."
+            value="",
+            placeholder="e.g., Enter third title..."
         )
     with col_title3_2:
         subtitle2_color = st.color_picker(
@@ -1632,8 +1663,8 @@ def render_layer_form(layer_number: int) -> Dict:
     
     st.markdown(f"**Main Content - Layer {layer_number}**")
     content = st_quill(
-        value="Ist ein individuell kombinierbares Angebot für Menschen, denen ohne Unterstützung der Einstieg in den deutschen Arbeitsmarkt nicht gelingt. Diese Maßnahme basiert auf dem Zertifikat: 2025M100864-10001.",
-        placeholder="Enter main content here...",
+        value="",
+        placeholder="e.g., Enter main content here...",
         html=True,  # Return HTML content
         key=f"content_{layer_number}",
         toolbar=[
@@ -1670,6 +1701,13 @@ def render_layer_form(layer_number: int) -> Dict:
     
     # Image source selection
     image_source_index = st.session_state.get(f"image_source_{layer_number}", 0)
+    # Ensure index is an integer
+    try:
+        image_source_index = int(image_source_index) if image_source_index is not None else 0
+    except (ValueError, TypeError):
+        image_source_index = 0
+    # Ensure index is within valid range
+    image_source_index = max(0, min(1, image_source_index))
     image_source = st.radio(
         f"Image Source - Layer {layer_number}",
         options=["External URL", "Upload Image (Base64)"],
@@ -1718,10 +1756,18 @@ def render_layer_form(layer_number: int) -> Dict:
                 # Use existing base64 from session_state
                 image_base64 = existing_base64
         
+        alignment_index = st.session_state.get(f"alignment_{layer_number}", 0)
+        # Ensure index is an integer
+        try:
+            alignment_index = int(alignment_index) if alignment_index is not None else 0
+        except (ValueError, TypeError):
+            alignment_index = 0
+        # Ensure index is within valid range
+        alignment_index = max(0, min(1, alignment_index))
         image_alignment = st.selectbox(
             f"Image Position - Layer {layer_number}",
             options=['Left', 'Right'],
-            index=0,
+            index=alignment_index,
             key=f"alignment_{layer_number}",
             help="Position of image relative to text"
         )
