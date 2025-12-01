@@ -177,12 +177,12 @@ class NewsletterGenerator:
         content = layer.get('content', '')
         
         title_color = layer.get('title_color', text_color)
-        subtitle_color = layer.get('subtitle_color', '#008000')  # Green by default
+        subtitle_color = layer.get('subtitle_color', '#00925b')  # Green by default
         subtitle2_color = layer.get('subtitle2_color', text_color)
         
-        title_font_size = layer.get('title_font_size', 26)
-        subtitle_font_size = layer.get('subtitle_font_size', 18)
-        subtitle2_font_size = layer.get('subtitle2_font_size', 16)
+        title_font_size = layer.get('title_font_size', 21)
+        subtitle_font_size = layer.get('subtitle_font_size', 15)
+        subtitle2_font_size = layer.get('subtitle2_font_size', 13)
         
         # Layer container with padding
         html_parts.append('<tr>')
@@ -281,7 +281,7 @@ class NewsletterGenerator:
         if content:
             formatted_content = content.replace('\n', '<br>')
             html_parts.append(
-                f'<p style="color: {text_color}; margin: 0; font-size: 16px; line-height: 1.5;">'
+                f'<p style="color: {text_color}; margin: 0; font-size: 13px; line-height: 1.5;">'
                 f'{formatted_content}</p>'
             )
         
@@ -356,7 +356,7 @@ class NewsletterGenerator:
             html_parts.append('<tr>')
             html_parts.append(f'<td style="padding: 0 20px 10px 20px; background-color: {header_bg_color};">')
             html_parts.append(
-                f'<h1 style="color: #333333; font-size: {title_font_size}px; margin: 0; font-weight: bold; line-height: 1.3;">{header_title}</h1>'
+                f'<h1 style="color: #000000; font-size: {title_font_size}px; margin: 0; font-weight: bold; line-height: 1.3;">{header_title}</h1>'
             )
             html_parts.append('</td>')
             html_parts.append('</tr>')
@@ -368,7 +368,7 @@ class NewsletterGenerator:
             html_parts.append('<tr>')
             html_parts.append(f'<td style="padding: 0 20px 20px 20px; background-color: {header_bg_color};">')
             html_parts.append(
-                f'<p style="color: #333333; font-size: {text_font_size}px; margin: 0; line-height: 1.5;">{formatted_text}</p>'
+                f'<p style="color: #000000; font-size: {text_font_size}px; margin: 0; line-height: 1.5;">{formatted_text}</p>'
             )
             html_parts.append('</td>')
             html_parts.append('</tr>')
@@ -499,7 +499,7 @@ def render_sidebar() -> Dict:
         
         text_color = st.color_picker(
             "Text Color",
-            value="#333333",
+            value="#000000",
             help="Choose the primary text color for your newsletter"
         )
         
@@ -733,7 +733,7 @@ def render_layer_form(layer_number: int) -> Dict:
     with col_title1_2:
         title_color = st.color_picker(
             "Color",
-            value="#333333",
+            value="#000000",
             key=f"title_color_{layer_number}",
             help="Color for the main title"
         )
@@ -742,7 +742,7 @@ def render_layer_form(layer_number: int) -> Dict:
             "Size (px)",
             min_value=10,
             max_value=72,
-            value=26,
+            value=21,
             step=1,
             key=f"title_font_size_{layer_number}",
             help="Font size for main title"
@@ -760,7 +760,7 @@ def render_layer_form(layer_number: int) -> Dict:
     with col_title2_2:
         subtitle_color = st.color_picker(
             "Color",
-            value="#008000",
+            value="#00925b",
             key=f"subtitle_color_{layer_number}",
             help="Color for the second title"
         )
@@ -769,7 +769,7 @@ def render_layer_form(layer_number: int) -> Dict:
             "Size (px)",
             min_value=10,
             max_value=48,
-            value=18,
+            value=15,
             step=1,
             key=f"subtitle_font_size_{layer_number}",
             help="Font size for second title"
@@ -787,7 +787,7 @@ def render_layer_form(layer_number: int) -> Dict:
     with col_title3_2:
         subtitle2_color = st.color_picker(
             "Color",
-            value="#333333",
+            value="#000000",
             key=f"subtitle2_color_{layer_number}",
             help="Color for the third title"
         )
@@ -796,7 +796,7 @@ def render_layer_form(layer_number: int) -> Dict:
             "Size (px)",
             min_value=10,
             max_value=48,
-            value=16,
+            value=13,
             step=1,
             key=f"subtitle2_font_size_{layer_number}",
             help="Font size for third title"
