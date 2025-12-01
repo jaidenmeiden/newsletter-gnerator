@@ -184,6 +184,14 @@ class NewsletterGenerator:
         subtitle_font_size = layer.get('subtitle_font_size', 15)
         subtitle2_font_size = layer.get('subtitle2_font_size', 13)
         
+        title_bold = layer.get('title_bold', True)
+        subtitle_bold = layer.get('subtitle_bold', True)
+        subtitle2_bold = layer.get('subtitle2_bold', False)
+        
+        content_font_size = layer.get('content_font_size', 13)
+        content_color = layer.get('content_color', '#000000')
+        content_bold = layer.get('content_bold', False)
+        
         # Layer container with padding
         html_parts.append('<tr>')
         html_parts.append(f'<td style="padding: {padding}px 20px;">')
@@ -206,8 +214,9 @@ class NewsletterGenerator:
             html_parts.append('<td style="vertical-align: top;">')
             html_parts.extend(NewsletterGenerator._generate_layer_text(
                 title, subtitle, subtitle2, content,
-                title_color, subtitle_color, subtitle2_color, text_color,
-                title_font_size, subtitle_font_size, subtitle2_font_size
+                title_color, subtitle_color, subtitle2_color, content_color,
+                title_font_size, subtitle_font_size, subtitle2_font_size, content_font_size,
+                title_bold, subtitle_bold, subtitle2_bold, content_bold
             ))
             html_parts.append('</td>')
             
@@ -216,8 +225,9 @@ class NewsletterGenerator:
             html_parts.append('<td style="vertical-align: top; width: 100%;">')
             html_parts.extend(NewsletterGenerator._generate_layer_text(
                 title, subtitle, subtitle2, content,
-                title_color, subtitle_color, subtitle2_color, text_color,
-                title_font_size, subtitle_font_size, subtitle2_font_size
+                title_color, subtitle_color, subtitle2_color, content_color,
+                title_font_size, subtitle_font_size, subtitle2_font_size, content_font_size,
+                title_bold, subtitle_bold, subtitle2_bold, content_bold
             ))
             html_parts.append('</td>')
             
@@ -233,8 +243,9 @@ class NewsletterGenerator:
             html_parts.append('<td style="vertical-align: top; width: 100%;">')
             html_parts.extend(NewsletterGenerator._generate_layer_text(
                 title, subtitle, subtitle2, content,
-                title_color, subtitle_color, subtitle2_color, text_color,
-                title_font_size, subtitle_font_size, subtitle2_font_size
+                title_color, subtitle_color, subtitle2_color, content_color,
+                title_font_size, subtitle_font_size, subtitle2_font_size, content_font_size,
+                title_bold, subtitle_bold, subtitle2_bold, content_bold
             ))
             html_parts.append('</td>')
         
@@ -250,30 +261,37 @@ class NewsletterGenerator:
     @staticmethod
     def _generate_layer_text(
         title: str, subtitle: str, subtitle2: str, content: str,
-        title_color: str, subtitle_color: str, subtitle2_color: str, text_color: str,
-        title_font_size: int, subtitle_font_size: int, subtitle2_font_size: int
+        title_color: str, subtitle_color: str, subtitle2_color: str, content_color: str,
+        title_font_size: int, subtitle_font_size: int, subtitle2_font_size: int, content_font_size: int,
+        title_bold: bool, subtitle_bold: bool, subtitle2_bold: bool, content_bold: bool
     ) -> List[str]:
         """Generate HTML for layer text content (titles and body)."""
         html_parts = []
         
+        # Determine font-weight based on bold setting
+        title_weight = '700' if title_bold else '400'
+        subtitle_weight = '600' if subtitle_bold else '400'
+        subtitle2_weight = '500' if subtitle2_bold else '400'
+        content_weight = '700' if content_bold else '400'
+        
         # Title (H2)
         if title:
             html_parts.append(
-                f'<h2 style="color: {title_color}; margin: 0 0 10px 0; font-size: {title_font_size}px; font-weight: 700; line-height: 1.2;">'
+                f'<h2 style="color: {title_color}; margin: 0 0 10px 0; font-size: {title_font_size}px; font-weight: {title_weight}; line-height: 1.2;">'
                 f'{title}</h2>'
             )
         
         # Subtitle (H3) - Green/accent color
         if subtitle:
             html_parts.append(
-                f'<h3 style="color: {subtitle_color}; margin: 0 0 10px 0; font-size: {subtitle_font_size}px; font-weight: 600; line-height: 1.4;">'
+                f'<h3 style="color: {subtitle_color}; margin: 0 0 10px 0; font-size: {subtitle_font_size}px; font-weight: {subtitle_weight}; line-height: 1.4;">'
                 f'{subtitle}</h3>'
             )
         
         # Subtitle 2 (H4) - Third title
         if subtitle2:
             html_parts.append(
-                f'<h4 style="color: {subtitle2_color}; margin: 0 0 15px 0; font-size: {subtitle2_font_size}px; font-weight: 500; line-height: 1.4;">'
+                f'<h4 style="color: {subtitle2_color}; margin: 0 0 15px 0; font-size: {subtitle2_font_size}px; font-weight: {subtitle2_weight}; line-height: 1.4;">'
                 f'{subtitle2}</h4>'
             )
         
@@ -281,7 +299,7 @@ class NewsletterGenerator:
         if content:
             formatted_content = content.replace('\n', '<br>')
             html_parts.append(
-                f'<p style="color: {text_color}; margin: 0; font-size: 13px; line-height: 1.5;">'
+                f'<p style="color: {content_color}; margin: 0; font-size: {content_font_size}px; font-weight: {content_weight}; line-height: 1.5;">'
                 f'{formatted_content}</p>'
             )
         
@@ -722,7 +740,7 @@ def render_layer_form(layer_number: int) -> Dict:
     st.subheader(f"Layer {layer_number}")
     
     # Title 1 with styling
-    col_title1_1, col_title1_2, col_title1_3 = st.columns([3, 1, 1])
+    col_title1_1, col_title1_2, col_title1_3, col_title1_4 = st.columns([3, 1, 1, 1])
     with col_title1_1:
         title = st.text_input(
             f"Title 1 (H2) - Layer {layer_number}",
@@ -747,9 +765,16 @@ def render_layer_form(layer_number: int) -> Dict:
             key=f"title_font_size_{layer_number}",
             help="Font size for main title"
         )
+    with col_title1_4:
+        title_bold = st.checkbox(
+            "Bold",
+            value=True,
+            key=f"title_bold_{layer_number}",
+            help="Make title bold"
+        )
     
     # Title 2 with styling
-    col_title2_1, col_title2_2, col_title2_3 = st.columns([3, 1, 1])
+    col_title2_1, col_title2_2, col_title2_3, col_title2_4 = st.columns([3, 1, 1, 1])
     with col_title2_1:
         subtitle = st.text_input(
             f"Title 2 (H3) - Layer {layer_number}",
@@ -774,9 +799,16 @@ def render_layer_form(layer_number: int) -> Dict:
             key=f"subtitle_font_size_{layer_number}",
             help="Font size for second title"
         )
+    with col_title2_4:
+        subtitle_bold = st.checkbox(
+            "Bold",
+            value=False,
+            key=f"subtitle_bold_{layer_number}",
+            help="Make subtitle bold"
+        )
     
     # Title 3 with styling
-    col_title3_1, col_title3_2, col_title3_3 = st.columns([3, 1, 1])
+    col_title3_1, col_title3_2, col_title3_3, col_title3_4 = st.columns([3, 1, 1, 1])
     with col_title3_1:
         subtitle2 = st.text_input(
             f"Title 3 (H4) - Layer {layer_number}",
@@ -801,6 +833,13 @@ def render_layer_form(layer_number: int) -> Dict:
             key=f"subtitle2_font_size_{layer_number}",
             help="Font size for third title"
         )
+    with col_title3_4:
+        subtitle2_bold = st.checkbox(
+            "Bold",
+            value=False,
+            key=f"subtitle2_bold_{layer_number}",
+            help="Make third title bold"
+        )
     
     content = st.text_area(
         f"Main Content - Layer {layer_number}",
@@ -809,6 +848,33 @@ def render_layer_form(layer_number: int) -> Dict:
         placeholder="Enter the main content for this layer...",
         height=150
     )
+    
+    # Main Content styling
+    col_content1, col_content2, col_content3 = st.columns(3)
+    with col_content1:
+        content_font_size = st.number_input(
+            f"Content Font Size (px) - Layer {layer_number}",
+            min_value=8,
+            max_value=48,
+            value=13,
+            step=1,
+            key=f"content_font_size_{layer_number}",
+            help="Font size for main content"
+        )
+    with col_content2:
+        content_color = st.color_picker(
+            f"Content Color - Layer {layer_number}",
+            value="#000000",
+            key=f"content_color_{layer_number}",
+            help="Color for main content"
+        )
+    with col_content3:
+        content_bold = st.checkbox(
+            f"Content Bold - Layer {layer_number}",
+            value=False,
+            key=f"content_bold_{layer_number}",
+            help="Make content bold"
+        )
     
     st.markdown("**Image Configuration**")
     
@@ -891,7 +957,13 @@ def render_layer_form(layer_number: int) -> Dict:
         'subtitle2_color': subtitle2_color,
         'title_font_size': title_font_size,
         'subtitle_font_size': subtitle_font_size,
-        'subtitle2_font_size': subtitle2_font_size
+        'subtitle2_font_size': subtitle2_font_size,
+        'title_bold': title_bold,
+        'subtitle_bold': subtitle_bold,
+        'subtitle2_bold': subtitle2_bold,
+        'content_font_size': content_font_size,
+        'content_color': content_color,
+        'content_bold': content_bold
     }
 
 
