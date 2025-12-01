@@ -32,22 +32,33 @@ class ImageProcessor:
             # Open image with Pillow
             img = Image.open(image_file)
             
-            # Convert to RGB if necessary (handles RGBA, P, etc.)
-            if img.mode != 'RGB':
-                img = img.convert('RGB')
+            # Determine if original is PNG to preserve transparency
+            is_png = image_file.type in ['image/png', 'image/PNG'] or img.format == 'PNG'
             
             # Save to bytes buffer
             buffer = io.BytesIO()
-            img.save(buffer, format='JPEG', quality=95)
+            
+            if is_png:
+                # Preserve PNG format and transparency (RGBA mode)
+                if img.mode not in ('RGBA', 'LA', 'P'):
+                    # Convert to RGBA if not already, preserving transparency
+                    if img.mode == 'RGB':
+                        img = img.convert('RGBA')
+                    else:
+                        img = img.convert('RGBA')
+                img.save(buffer, format='PNG', optimize=True)
+                mime_type = 'image/png'
+            else:
+                # Convert to RGB for JPEG (no transparency support)
+                if img.mode != 'RGB':
+                    img = img.convert('RGB')
+                img.save(buffer, format='JPEG', quality=95)
+                mime_type = 'image/jpeg'
+            
             buffer.seek(0)
             
             # Encode to Base64
             img_base64 = base64.b64encode(buffer.read()).decode('utf-8')
-            
-            # Determine MIME type based on original format
-            mime_type = 'image/jpeg'
-            if image_file.type in ['image/png', 'image/PNG']:
-                mime_type = 'image/png'
             
             return f"data:{mime_type};base64,{img_base64}"
         except Exception as e:
@@ -173,11 +184,11 @@ class NewsletterGenerator:
         
         # Image on left or right
         if image_src and image_src.strip() and image_alignment == 'left':
-            # Image column (left)
-            html_parts.append(f'<td style="vertical-align: top; padding-right: 20px; width: {image_width}px;">')
+            # Image column (left) - transparent background to preserve PNG transparency
+            html_parts.append(f'<td style="vertical-align: top; padding-right: 20px; width: {image_width}px; background-color: transparent;">')
             html_parts.append(
                 f'<img src="{image_src}" alt="{title or "Layer Image"}" '
-                f'width="{image_width}" style="width: {image_width}px; max-width: 100%; height: auto; display: block; border: 0; outline: none;">'
+                f'width="{image_width}" style="width: {image_width}px; max-width: 100%; height: auto; display: block; border: 0; outline: none; background-color: transparent;">'
             )
             html_parts.append('</td>')
             
@@ -200,11 +211,11 @@ class NewsletterGenerator:
             ))
             html_parts.append('</td>')
             
-            # Image column (right)
-            html_parts.append(f'<td style="vertical-align: top; padding-left: 20px; width: {image_width}px;">')
+            # Image column (right) - transparent background to preserve PNG transparency
+            html_parts.append(f'<td style="vertical-align: top; padding-left: 20px; width: {image_width}px; background-color: transparent;">')
             html_parts.append(
                 f'<img src="{image_src}" alt="{title or "Layer Image"}" '
-                f'width="{image_width}" style="width: {image_width}px; max-width: 100%; height: auto; display: block; border: 0; outline: none;">'
+                f'width="{image_width}" style="width: {image_width}px; max-width: 100%; height: auto; display: block; border: 0; outline: none; background-color: transparent;">'
             )
             html_parts.append('</td>')
         else:
