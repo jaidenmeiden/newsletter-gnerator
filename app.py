@@ -324,11 +324,11 @@ class NewsletterGenerator:
         """
         html_parts = []
 
-        # 1. Pre-Header Text (Texto oculto para la vista previa del email) - Solo si se proporciona
+        # 1. Pre-Header Text (Hidden text for email preview) - Only if provided
         pre_header_text = header_config.get('pre_header_text', '').strip()
-        if pre_header_text:  # Solo incluir si el usuario lo completa
+        if pre_header_text:  # Only include if the user fills it
             html_parts.append('<tr>')
-            # Estilos de email para ocultar texto pero hacerlo legible para el pre-header
+            # Email styles to hide text but make it readable for pre-header
             html_parts.append(
                 '<td style="padding: 0; font-size: 0; line-height: 0; display: none !important; '
                 'max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden; mso-hide: all;">'
@@ -341,15 +341,25 @@ class NewsletterGenerator:
         
         # 2. Main Header Structure
         header_title = header_config.get('header_title', '').strip()
-        if not header_title:  # Si no hay título, usar el subject como fallback
+        if not header_title:  # If no title, use subject as fallback
             header_title = subject
         header_text = header_config.get('header_text', '').strip()
         header_image_base64 = header_config.get('header_image_base64')
         header_image_url = header_config.get('header_image_url')
         header_bg_color = header_config.get('header_bg_color', '#ffffff')
         image_width = header_config.get('image_width', 600)
+        
         title_font_size = header_config.get('title_font_size', 28)
+        title_color = header_config.get('title_color', '#000000')
+        title_bold = header_config.get('title_bold', True)
+        
         text_font_size = header_config.get('text_font_size', 16)
+        text_color = header_config.get('text_color', '#000000')
+        text_bold = header_config.get('text_bold', False)
+        
+        # Font weights
+        title_weight = '700' if title_bold else '400'
+        text_weight = '700' if text_bold else '400'
         
         # Determine image source
         image_src = None
@@ -381,7 +391,7 @@ class NewsletterGenerator:
             html_parts.append('<tr>')
             html_parts.append(f'<td style="padding: 0 20px 10px 20px; background-color: {header_bg_color};">')
             html_parts.append(
-                f'<h1 style="color: #000000; font-size: {title_font_size}px; margin: 0; font-weight: bold; line-height: 1.3;">{header_title}</h1>'
+                f'<h1 style="color: {title_color}; font-size: {title_font_size}px; margin: 0; font-weight: {title_weight}; line-height: 1.3;">{header_title}</h1>'
             )
             html_parts.append('</td>')
             html_parts.append('</tr>')
@@ -393,7 +403,7 @@ class NewsletterGenerator:
             html_parts.append('<tr>')
             html_parts.append(f'<td style="padding: 0 20px 20px 20px; background-color: {header_bg_color};">')
             html_parts.append(
-                f'<p style="color: #000000; font-size: {text_font_size}px; margin: 0; line-height: 1.5;">{formatted_text}</p>'
+                f'<p style="color: {text_color}; font-size: {text_font_size}px; margin: 0; font-weight: {text_weight}; line-height: 1.5;">{formatted_text}</p>'
             )
             html_parts.append('</td>')
             html_parts.append('</tr>')
@@ -419,7 +429,7 @@ class NewsletterGenerator:
         
         company_name = footer_config.get('company_name', '')
         company_name_color = footer_config.get('company_name_color', '#000000')
-        company_name_size = footer_config.get('company_name_size', 14)
+        company_name_size = footer_config.get('company_name_size', 12)
         company_name_bold = footer_config.get('company_name_bold', False)
         
         address = footer_config.get('address', '')
@@ -706,7 +716,25 @@ def render_header_config(email_subject: str) -> Dict:
     """
     st.header("📋 Header Configuration")
     
-    # Image source selection
+    # First row: Pre-Header Text (Optional) | Header Background Color
+    col_row1_1, col_row1_2 = st.columns(2)
+    with col_row1_1:
+        pre_header_text = st.text_input(
+            "Pre-Header Text (Optional)",
+            value="",
+            placeholder="Hidden text for email preview",
+            key="pre_header_text",
+            help="Hidden text shown in email preview (optional - only included if filled)"
+        )
+    with col_row1_2:
+        header_bg_color = st.color_picker(
+            "Header Background Color",
+            value="#ffffff",
+            key="header_bg_color",
+            help="Background color for the header section"
+        )
+    
+    # Second row: Image Source
     image_source = st.radio(
         "Image Source",
         options=["External URL", "Upload Image (Base64)"],
@@ -714,12 +742,12 @@ def render_header_config(email_subject: str) -> Dict:
         help="Choose how to provide the header image"
     )
     
-    col1, col2 = st.columns(2)
-    
+    # Third row: Header Image URL | Image Width (px)
+    col_row3_1, col_row3_2 = st.columns(2)
     header_image_base64 = None
     header_image_url = None
     
-    with col1:
+    with col_row3_1:
         if image_source == "External URL":
             header_image_url = st.text_input(
                 "Header Image URL",
@@ -737,40 +765,8 @@ def render_header_config(email_subject: str) -> Dict:
             # Process header image
             if header_image_file is not None:
                 header_image_base64 = ImageProcessor.convert_to_base64(header_image_file)
-        
-        header_title = st.text_input(
-            "Header Title",
-            value="Sehr geehrte/r Frau/Herr....",
-            placeholder="Example: Sehr geehrte/r Frau/Herr...",
-            key="header_title",
-            help="The title displayed in the newsletter header"
-        )
-        
-        header_text = st.text_area(
-            "Header Text",
-            value="ich freue mich Ihnen unsere neuesten Angebote der beruflichen Fortbildungszentren der Bayerischen Wirtschaft (bfz) gGmbH vorzustellen. Mit unserer Jahrzehnten langen Erfahrung sind wir Ihr erfolgreicher Partner für Beratung, Bildung und Integration für Arbeitnehmer*innen.",
-            key="header_text",
-            help="Text content below the title in the header",
-            height=100
-        )
     
-    with col2:
-        pre_header_text = st.text_input(
-            "Pre-Header Text (Opcional)",
-            value="",
-            placeholder="Texto oculto para vista previa de email",
-            key="pre_header_text",
-            help="Hidden text shown in email preview (opcional - solo se incluye si se completa)"
-        )
-        
-        header_bg_color = st.color_picker(
-            "Header Background Color",
-            value="#ffffff",
-            key="header_bg_color",
-            help="Background color for the header section"
-        )
-        
-        # Image size configuration
+    with col_row3_2:
         image_width = st.number_input(
             "Image Width (px)",
             min_value=50,
@@ -780,10 +776,27 @@ def render_header_config(email_subject: str) -> Dict:
             key="header_image_width",
             help="Width of the header image in pixels"
         )
-        
-        # Font sizes
+    
+    # Header Title with styling
+    col_title_1, col_title_2, col_title_3, col_title_4 = st.columns([3, 1, 1, 1])
+    with col_title_1:
+        header_title = st.text_input(
+            "Header Title",
+            value="Sehr geehrte/r Frau/Herr....",
+            placeholder="Example: Sehr geehrte/r Frau/Herr...",
+            key="header_title",
+            help="The title displayed in the newsletter header"
+        )
+    with col_title_2:
+        title_color = st.color_picker(
+            "Color",
+            value="#000000",
+            key="header_title_color",
+            help="Color for the header title"
+        )
+    with col_title_3:
         title_font_size = st.number_input(
-            "Title Font Size (px)",
+            "Size (px)",
             min_value=10,
             max_value=72,
             value=28,
@@ -791,15 +804,47 @@ def render_header_config(email_subject: str) -> Dict:
             key="header_title_font_size",
             help="Font size for the header title"
         )
-        
+    with col_title_4:
+        title_bold = st.checkbox(
+            "Bold",
+            value=True,
+            key="header_title_bold",
+            help="Make header title bold"
+        )
+    
+    # Header Text with styling
+    col_text_1, col_text_2, col_text_3, col_text_4 = st.columns([3, 1, 1, 1])
+    with col_text_1:
+        header_text = st.text_area(
+            "Header Text",
+            value="ich freue mich Ihnen unsere neuesten Angebote der beruflichen Fortbildungszentren der Bayerischen Wirtschaft (bfz) gGmbH vorzustellen. Mit unserer Jahrzehnten langen Erfahrung sind wir Ihr erfolgreicher Partner für Beratung, Bildung und Integration für Arbeitnehmer*innen.",
+            key="header_text",
+            help="Text content below the title in the header",
+            height=100
+        )
+    with col_text_2:
+        text_color = st.color_picker(
+            "Color",
+            value="#000000",
+            key="header_text_color",
+            help="Color for the header text"
+        )
+    with col_text_3:
         text_font_size = st.number_input(
-            "Header Text Font Size (px)",
+            "Size (px)",
             min_value=10,
             max_value=48,
             value=16,
             step=1,
             key="header_text_font_size",
             help="Font size for the header text"
+        )
+    with col_text_4:
+        text_bold = st.checkbox(
+            "Bold",
+            value=False,
+            key="header_text_bold",
+            help="Make header text bold"
         )
     
     return {
@@ -811,7 +856,11 @@ def render_header_config(email_subject: str) -> Dict:
         'header_bg_color': header_bg_color,
         'image_width': image_width,
         'title_font_size': title_font_size,
-        'text_font_size': text_font_size
+        'title_color': title_color,
+        'title_bold': title_bold,
+        'text_font_size': text_font_size,
+        'text_color': text_color,
+        'text_bold': text_bold
     }
 
 
@@ -831,7 +880,7 @@ def render_footer_config() -> Dict:
         footer_alignment = st.selectbox(
             "Footer Alignment",
             options=['Left', 'Center', 'Right'],
-            index=1,
+            index=0,
             key="footer_alignment",
             help="Alignment of the entire footer content (image and text)"
         )
@@ -908,7 +957,7 @@ def render_footer_config() -> Dict:
             "Size (px)",
             min_value=8,
             max_value=48,
-            value=14,
+            value=12,
             step=1,
             key="footer_company_name_size",
             help="Font size for company name"
@@ -927,7 +976,7 @@ def render_footer_config() -> Dict:
         address = st.text_area(
             "Company Address",
             value="Sitz/Registergericht: München, Registernummer: HRB 121447",
-            placeholder="Example: Sitz/Registergericht: München, Registernummer: HRB 121447",
+            placeholder="Example: Registered Office/Commercial Register: Munich, Registration Number: HRB 121447",
             key="footer_address",
             help="Company address and registration information",
             height=80
@@ -961,9 +1010,9 @@ def render_footer_config() -> Dict:
     col_dir_1, col_dir_2, col_dir_3, col_dir_4 = st.columns([3, 1, 1, 1])
     with col_dir_1:
         directors = st.text_area(
-            "Directors/Responsibles",
+            "Responsibles",
             value="Geschäftsführer: Sandra Stenger, Wolfgang Braun, Jörg Plesch",
-            placeholder="Example: Geschäftsführer: Sandra Stenger, Wolfgang Braun, Jörg Plesch",
+            placeholder="Example: Managing Directors: Sandra Stenger, Wolfgang Braun, Jörg Plesch",
             key="footer_directors",
             help="Company directors or responsible persons",
             height=60
