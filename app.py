@@ -505,8 +505,8 @@ class NewsletterGenerator:
         facebook_image_base64 = footer_config.get('facebook_image_base64')
         linkedin_url = footer_config.get('linkedin_url', '')
         linkedin_image_base64 = footer_config.get('linkedin_image_base64')
-        twitter_url = footer_config.get('twitter_url', '')
-        twitter_image_base64 = footer_config.get('twitter_image_base64')
+        xing_url = footer_config.get('xing_url', '')
+        xing_image_base64 = footer_config.get('xing_image_base64')
         instagram_url = footer_config.get('instagram_url', '')
         instagram_image_base64 = footer_config.get('instagram_image_base64')
         
@@ -524,10 +524,10 @@ class NewsletterGenerator:
                     f'<img src="{linkedin_image_base64}" alt="LinkedIn" width="{social_image_width}" '
                     f'style="width: {social_image_width}px; height: auto; border: 0; outline: none;"></a>'
                 )
-            if twitter_url and twitter_image_base64:
+            if xing_url and xing_image_base64:
                 social_links.append(
-                    f'<a href="{twitter_url}" target="_blank" style="margin: 0 10px; display: inline-block;">'
-                    f'<img src="{twitter_image_base64}" alt="X" width="{social_image_width}" '
+                    f'<a href="{xing_url}" target="_blank" style="margin: 0 10px; display: inline-block;">'
+                    f'<img src="{xing_image_base64}" alt="X" width="{social_image_width}" '
                     f'style="width: {social_image_width}px; height: auto; border: 0; outline: none;"></a>'
                 )
             if instagram_url and instagram_image_base64:
@@ -541,14 +541,14 @@ class NewsletterGenerator:
                 social_links.append(f'<a href="{facebook_url}" target="_blank" style="color: #999999; text-decoration: none; margin: 0 10px; display: inline-block;">Facebook</a>')
             if linkedin_url:
                 social_links.append(f'<a href="{linkedin_url}" target="_blank" style="color: #999999; text-decoration: none; margin: 0 10px; display: inline-block;">LinkedIn</a>')
-            if twitter_url:
-                social_links.append(f'<a href="{twitter_url}" target="_blank" style="color: #999999; text-decoration: none; margin: 0 10px; display: inline-block;">X</a>')
+            if xing_url:
+                social_links.append(f'<a href="{xing_url}" target="_blank" style="color: #999999; text-decoration: none; margin: 0 10px; display: inline-block;">X</a>')
             if instagram_url:
                 social_links.append(f'<a href="{instagram_url}" target="_blank" style="color: #999999; text-decoration: none; margin: 0 10px; display: inline-block;">Instagram</a>')
         
         if social_links:
             html_parts.append('<div style="margin-top: 20px;">')
-            html_parts.append('<p style="color: #999999; margin: 0 0 10px 0; font-size: 11px;">Los canales de redes sociales de bfz gGmbH:</p>')
+            html_parts.append('<p style="color: #999999; margin: 0 0 10px 0; font-size: 11px;">Die Social-Media-Kanäle der bfz gGmbH:</p>')
             html_parts.append('<div>')
             html_parts.extend(social_links)
             html_parts.append('</div>')
@@ -1068,7 +1068,7 @@ def render_footer_config() -> Dict:
     with col_social1:
         facebook_url = st.text_input(
             "Facebook URL",
-            value="",
+            value="https://facebbok.com",
             key="footer_facebook",
             help="Facebook page URL"
         )
@@ -1084,7 +1084,7 @@ def render_footer_config() -> Dict:
         
         linkedin_url = st.text_input(
             "LinkedIn URL",
-            value="",
+            value="https://linkedin.com",
             key="footer_linkedin",
             help="LinkedIn page URL"
         )
@@ -1099,25 +1099,25 @@ def render_footer_config() -> Dict:
             linkedin_image = None
     
     with col_social2:
-        twitter_url = st.text_input(
-            "X (Twitter) URL",
-            value="",
-            key="footer_twitter",
-            help="X (Twitter) page URL"
+        xing_url = st.text_input(
+            "Xing URL",
+            value="https://xing.com",
+            key="footer_xing",
+            help="Xing page URL"
         )
         if social_media_type == "Images":
-            twitter_image = st.file_uploader(
-                "X (Twitter) Icon",
+            xing_image = st.file_uploader(
+                "Xing Icon",
                 type=['jpg', 'jpeg', 'png', 'JPG', 'JPEG', 'PNG', 'svg', 'SVG'],
-                key="footer_twitter_image",
-                help="Upload X (Twitter) icon image"
+                key="footer_xing_image",
+                help="Upload Xing icon image"
             )
         else:
-            twitter_image = None
+            xing_image = None
         
         instagram_url = st.text_input(
             "Instagram URL",
-            value="",
+            value="https://instagram.com",
             key="footer_instagram",
             help="Instagram page URL"
         )
@@ -1134,7 +1134,7 @@ def render_footer_config() -> Dict:
     # Process social media images to Base64
     facebook_image_base64 = None
     linkedin_image_base64 = None
-    twitter_image_base64 = None
+    xing_image_base64 = None
     instagram_image_base64 = None
     
     if social_media_type == "Images":
@@ -1142,8 +1142,8 @@ def render_footer_config() -> Dict:
             facebook_image_base64 = ImageProcessor.convert_to_base64(facebook_image)
         if linkedin_image:
             linkedin_image_base64 = ImageProcessor.convert_to_base64(linkedin_image)
-        if twitter_image:
-            twitter_image_base64 = ImageProcessor.convert_to_base64(twitter_image)
+        if xing_image:
+            xing_image_base64 = ImageProcessor.convert_to_base64(xing_image)
         if instagram_image:
             instagram_image_base64 = ImageProcessor.convert_to_base64(instagram_image)
     
@@ -1171,8 +1171,8 @@ def render_footer_config() -> Dict:
         'facebook_image_base64': facebook_image_base64,
         'linkedin_url': linkedin_url,
         'linkedin_image_base64': linkedin_image_base64,
-        'twitter_url': twitter_url,
-        'twitter_image_base64': twitter_image_base64,
+        'xing_url': xing_url,
+        'xing_image_base64': xing_image_base64,
         'instagram_url': instagram_url,
         'instagram_image_base64': instagram_image_base64
     }
