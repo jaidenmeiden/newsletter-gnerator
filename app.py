@@ -13,107 +13,6 @@ import streamlit as st
 from PIL import Image
 
 
-def render_html_editor(key: str, label: str, value: str = "", height: int = 200, help_text: str = "") -> str:
-    """
-    Render a rich text HTML editor using Quill.js.
-    
-    Args:
-        key: Unique key for the editor instance
-        label: Label for the editor
-        value: Initial HTML content
-        height: Editor height in pixels
-        help_text: Help text to display
-        
-    Returns:
-        HTML content from the editor
-    """
-    # Initialize session state for this editor
-    editor_key = f"html_editor_{key}"
-    if editor_key not in st.session_state:
-        st.session_state[editor_key] = value
-    
-    # Read HTML editor component
-    html_path = os.path.join(os.path.dirname(__file__), 'components', 'html_editor.html')
-    try:
-        with open(html_path, 'r', encoding='utf-8') as f:
-            editor_html = f.read()
-    except FileNotFoundError:
-        # Try relative path as fallback
-        try:
-            with open('components/html_editor.html', 'r', encoding='utf-8') as f:
-                editor_html = f.read()
-        except FileNotFoundError:
-            st.error("HTML editor component not found. Please ensure components/html_editor.html exists.")
-            return st.session_state.get(editor_key, value)
-    
-    # Escape value for HTML
-    escaped_value = value.replace('"', '&quot;').replace("'", "&#39;")
-    
-    # Replace placeholders in HTML
-    # Pass the key and textarea key to the editor for proper identification
-    editor_html = editor_html.replace('{{ELEMENT_ID}}', key)
-    editor_html = editor_html.replace('{{TEXTAREA_KEY}}', f"{key}_html")
-    editor_html = editor_html.replace('{{INITIAL_VALUE}}', escaped_value)
-    editor_html = editor_html.replace('height: 200px;', f'height: {height}px;')
-    editor_html = editor_html.replace('min-height: 150px;', f'min-height: {max(height - 50, 100)}px;')
-    
-    # Display label and help
-    if label:
-        st.markdown(f"**{label}**")
-    if help_text:
-        st.caption(help_text)
-    
-    # Get current value from session state or use provided value
-    textarea_key = f"{key}_html"
-    
-    # Initialize session state if needed (BEFORE creating any widgets)
-    if textarea_key not in st.session_state:
-        st.session_state[textarea_key] = value
-    if editor_key not in st.session_state:
-        st.session_state[editor_key] = value
-    
-    # Get the current value from session state
-    # This will be used as the initial value for both editor and textarea
-    current_value = st.session_state.get(textarea_key, value)
-    
-    # Update the editor HTML with current value from session state
-    # This ensures the editor always shows the latest content
-    escaped_value = current_value.replace('"', '&quot;').replace("'", "&#39;")
-    editor_html = editor_html.replace('{{INITIAL_VALUE}}', escaped_value)
-    
-    # Render the editor first with current content
-    # Note: st.components.v1.html() doesn't accept 'key' parameter
-    st.components.v1.html(
-        editor_html, 
-        height=height + 150
-    )
-    
-    # Use a text area to capture/edit HTML content
-    # Streamlit automatically updates session_state[textarea_key] when user interacts
-    # The value parameter is the initial value, and the returned value is the current value
-    # Disable autofocus to prevent interrupting the editor
-    html_content = st.text_area(
-        f"{label} (HTML Source - Edit here or use editor above)",
-        value=current_value,
-        key=textarea_key,
-        help=f"HTML content. Edit directly or use the rich text editor above. Changes here will sync to the editor. {help_text}",
-        height=min(height, 150),
-        disabled=False  # Keep enabled but without autofocus
-    )
-    
-    # IMPORTANT: Do NOT modify session_state[textarea_key] after widget creation
-    # Streamlit already handles this automatically. The html_content returned
-    # is already the value in session_state[textarea_key]
-    
-    # We can update editor_key since it's a different key (not the widget key)
-    # But only if it's different to avoid unnecessary updates
-    if st.session_state.get(editor_key) != html_content:
-        st.session_state[editor_key] = html_content
-    
-    # Return the value from the widget (which Streamlit has already stored in session_state)
-    return html_content
-
-
 class ImageProcessor:
     """Handles image processing and Base64 encoding for newsletter embedding."""
 
@@ -927,12 +826,12 @@ def render_header_config(email_subject: str) -> Dict:
     # Header Text with styling
     col_text_1, col_text_2, col_text_3, col_text_4 = st.columns([3, 1, 1, 1])
     with col_text_1:
-        header_text = render_html_editor(
-            key="header_text",
-            label="Header Text",
+        header_text = st.text_area(
+            "Header Text",
             value="ich freue mich Ihnen unsere neuesten Angebote der beruflichen Fortbildungszentren der Bayerischen Wirtschaft (bfz) gGmbH vorzustellen. Mit unserer Jahrzehnten langen Erfahrung sind wir Ihr erfolgreicher Partner für Beratung, Bildung und Integration für Arbeitnehmer*innen.",
+            key="header_text",
             height=150,
-            help_text="Rich text editor for header content. Use the toolbar to format text, or edit HTML directly below."
+            help="Header text content"
         )
     with col_text_2:
         text_color = st.color_picker(
@@ -1521,12 +1420,12 @@ def render_layer_form(layer_number: int) -> Dict:
             help="Make third title bold"
         )
     
-    content = render_html_editor(
-        key=f"content_{layer_number}",
-        label=f"Main Content - Layer {layer_number}",
+    content = st.text_area(
+        f"Main Content - Layer {layer_number}",
         value="Ist ein individuell kombinierbares Angebot für Menschen, denen ohne Unterstützung der Einstieg in den deutschen Arbeitsmarkt nicht gelingt. Diese Maßnahme basiert auf dem Zertifikat: 2025M100864-10001.",
+        key=f"content_{layer_number}",
         height=200,
-        help_text="Rich text editor for main content. Use the toolbar to format text, or edit HTML directly below."
+        help="Main content for this layer"
     )
     
     # Main Content styling
