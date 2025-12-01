@@ -547,8 +547,17 @@ class NewsletterGenerator:
                 social_links.append(f'<a href="{instagram_url}" target="_blank" style="color: #999999; text-decoration: none; margin: 0 10px; display: inline-block;">Instagram</a>')
         
         if social_links:
+            social_media_label = footer_config.get('social_media_label', 'Die Social-Media-Kanäle der bfz gGmbH:')
+            social_label_color = footer_config.get('social_label_color', '#000000')
+            social_label_size = footer_config.get('social_label_size', 14)
+            social_label_bold = footer_config.get('social_label_bold', True)
+            social_label_weight = '700' if social_label_bold else '400'
+            
             html_parts.append('<div style="margin-top: 20px;">')
-            html_parts.append('<p style="color: #999999; margin: 0 0 10px 0; font-size: 11px;">Die Social-Media-Kanäle der bfz gGmbH:</p>')
+            if social_media_label:
+                html_parts.append(
+                    f'<p style="color: {social_label_color}; margin: 0 0 10px 0; font-size: {social_label_size}px; font-weight: {social_label_weight};">{social_media_label}</p>'
+                )
             html_parts.append('<div>')
             html_parts.extend(social_links)
             html_parts.append('</div>')
@@ -1044,6 +1053,39 @@ def render_footer_config() -> Dict:
     
     # Sixth row: Social Media Links section
     st.markdown("**Social Media Links**")
+    col_label_1, col_label_2, col_label_3, col_label_4 = st.columns([3, 1, 1, 1])
+    with col_label_1:
+        social_media_label = st.text_input(
+            "Social Media Section Label",
+            value="Die Social-Media-Kanäle der bfz gGmbH:",
+            placeholder="Example: Our Social Media Channels:",
+            key="footer_social_label",
+            help="Label text displayed above social media links"
+        )
+    with col_label_2:
+        social_label_color = st.color_picker(
+            "Color",
+            value="#000000",
+            key="footer_social_label_color",
+            help="Color for social media label"
+        )
+    with col_label_3:
+        social_label_size = st.number_input(
+            "Size (px)",
+            min_value=8,
+            max_value=48,
+            value=14,
+            step=1,
+            key="footer_social_label_size",
+            help="Font size for social media label"
+        )
+    with col_label_4:
+        social_label_bold = st.checkbox(
+            "Bold",
+            value=True,
+            key="footer_social_label_bold",
+            help="Make social media label bold"
+        )
     social_media_type = st.radio(
         "Social Media Type",
         options=["URLs Only", "Images"],
@@ -1064,8 +1106,9 @@ def render_footer_config() -> Dict:
     else:
         social_image_width = None
     
-    col_social1, col_social2 = st.columns(2)
-    with col_social1:
+    # First row: Facebook (left) | LinkedIn (right)
+    col_social_row1_1, col_social_row1_2 = st.columns(2)
+    with col_social_row1_1:
         facebook_url = st.text_input(
             "Facebook URL",
             value="https://facebbok.com",
@@ -1081,7 +1124,8 @@ def render_footer_config() -> Dict:
             )
         else:
             facebook_image = None
-        
+    
+    with col_social_row1_2:
         linkedin_url = st.text_input(
             "LinkedIn URL",
             value="https://linkedin.com",
@@ -1098,7 +1142,9 @@ def render_footer_config() -> Dict:
         else:
             linkedin_image = None
     
-    with col_social2:
+    # Second row: Xing (left) | Instagram (right)
+    col_social_row2_1, col_social_row2_2 = st.columns(2)
+    with col_social_row2_1:
         xing_url = st.text_input(
             "Xing URL",
             value="https://xing.com",
@@ -1114,7 +1160,8 @@ def render_footer_config() -> Dict:
             )
         else:
             xing_image = None
-        
+    
+    with col_social_row2_2:
         instagram_url = st.text_input(
             "Instagram URL",
             value="https://instagram.com",
@@ -1166,6 +1213,10 @@ def render_footer_config() -> Dict:
         'directors_size': directors_size,
         'directors_bold': directors_bold,
         'social_media_type': social_media_type,
+        'social_media_label': social_media_label,
+        'social_label_color': social_label_color,
+        'social_label_size': social_label_size,
+        'social_label_bold': social_label_bold,
         'social_image_width': social_image_width if social_media_type == "Images" else None,
         'facebook_url': facebook_url,
         'facebook_image_base64': facebook_image_base64,
