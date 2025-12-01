@@ -345,6 +345,7 @@ class NewsletterGenerator:
         subtitle_font_size = layer.get('subtitle_font_size', 15)
         subtitle2_font_size = layer.get('subtitle2_font_size', 13)
         
+        title_bold = layer.get('title_bold', True)
         subtitle_bold = layer.get('subtitle_bold', True)
         subtitle2_bold = layer.get('subtitle2_bold', False)
         
@@ -375,7 +376,7 @@ class NewsletterGenerator:
                 title, subtitle, subtitle2, content,
                 title_color, subtitle_color, subtitle2_color, content_color,
                 title_font_size, subtitle_font_size, subtitle2_font_size, content_font_size,
-                subtitle_bold, subtitle2_bold
+                title_bold, subtitle_bold, subtitle2_bold
             ))
             html_parts.append('</td>')
             
@@ -386,7 +387,7 @@ class NewsletterGenerator:
                 title, subtitle, subtitle2, content,
                 title_color, subtitle_color, subtitle2_color, content_color,
                 title_font_size, subtitle_font_size, subtitle2_font_size, content_font_size,
-                subtitle_bold, subtitle2_bold
+                title_bold, subtitle_bold, subtitle2_bold
             ))
             html_parts.append('</td>')
             
@@ -404,7 +405,7 @@ class NewsletterGenerator:
                 title, subtitle, subtitle2, content,
                 title_color, subtitle_color, subtitle2_color, content_color,
                 title_font_size, subtitle_font_size, subtitle2_font_size, content_font_size,
-                subtitle_bold, subtitle2_bold
+                title_bold, subtitle_bold, subtitle2_bold
             ))
             html_parts.append('</td>')
         
@@ -422,19 +423,20 @@ class NewsletterGenerator:
         title: str, subtitle: str, subtitle2: str, content: str,
         title_color: str, subtitle_color: str, subtitle2_color: str, content_color: str,
         title_font_size: int, subtitle_font_size: int, subtitle2_font_size: int, content_font_size: int,
-        subtitle_bold: bool, subtitle2_bold: bool
+        title_bold: bool, subtitle_bold: bool, subtitle2_bold: bool
     ) -> List[str]:
         """Generate HTML for layer text content (titles and body)."""
         html_parts = []
         
         # Determine font-weight based on bold setting
+        title_weight = '700' if title_bold else '400'
         subtitle_weight = '600' if subtitle_bold else '400'
         subtitle2_weight = '500' if subtitle2_bold else '400'
         
-        # Title (H2) - always bold by default
+        # Title (H2)
         if title:
             html_parts.append(
-                f'<h2 style="color: {title_color}; margin: 0 0 10px 0; font-size: {title_font_size}px; font-weight: 700; line-height: 1.2;">'
+                f'<h2 style="color: {title_color}; margin: 0 0 10px 0; font-size: {title_font_size}px; font-weight: {title_weight}; line-height: 1.2;">'
                 f'{title}</h2>'
             )
         
@@ -1567,7 +1569,7 @@ def render_layer_form(layer_number: int) -> Dict:
     st.subheader(f"Layer {layer_number}")
     
     # Title 1 with styling
-    col_title1_1, col_title1_2, col_title1_3 = st.columns([3, 1, 1])
+    col_title1_1, col_title1_2, col_title1_3, col_title1_4 = st.columns([3, 1, 1, 1])
     with col_title1_1:
         title = st.text_input(
             f"Title 1 (H2) - Layer {layer_number}",
@@ -1591,6 +1593,13 @@ def render_layer_form(layer_number: int) -> Dict:
             step=1,
             key=f"title_font_size_{layer_number}",
             help="Font size for main title"
+        )
+    with col_title1_4:
+        title_bold = st.checkbox(
+            "Bold",
+            value=st.session_state.get(f"title_bold_{layer_number}", True),
+            key=f"title_bold_{layer_number}",
+            help="Make main title bold"
         )
     
     # Title 2 with styling
@@ -1809,6 +1818,7 @@ def render_layer_form(layer_number: int) -> Dict:
         'title_font_size': title_font_size,
         'subtitle_font_size': subtitle_font_size,
         'subtitle2_font_size': subtitle2_font_size,
+        'title_bold': title_bold,
         'subtitle_bold': subtitle_bold,
         'subtitle2_bold': subtitle2_bold,
         'content_font_size': content_font_size,
@@ -1920,6 +1930,8 @@ def apply_template_to_session_state(template_data: dict):
             st.session_state[f'subtitle2_color_{i}'] = layer['subtitle2_color']
         if 'title_font_size' in layer:
             st.session_state[f'title_font_size_{i}'] = layer['title_font_size']
+        if 'title_bold' in layer:
+            st.session_state[f'title_bold_{i}'] = layer['title_bold']
         if 'subtitle_font_size' in layer:
             st.session_state[f'subtitle_font_size_{i}'] = layer['subtitle_font_size']
         if 'subtitle2_font_size' in layer:
