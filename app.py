@@ -50,7 +50,9 @@ def render_html_editor(key: str, label: str, value: str = "", height: int = 200,
     escaped_value = value.replace('"', '&quot;').replace("'", "&#39;")
     
     # Replace placeholders in HTML
+    # Pass the key and textarea key to the editor for proper identification
     editor_html = editor_html.replace('{{ELEMENT_ID}}', key)
+    editor_html = editor_html.replace('{{TEXTAREA_KEY}}', f"{key}_html")
     editor_html = editor_html.replace('{{INITIAL_VALUE}}', escaped_value)
     editor_html = editor_html.replace('height: 200px;', f'height: {height}px;')
     editor_html = editor_html.replace('min-height: 150px;', f'min-height: {max(height - 50, 100)}px;')
@@ -61,7 +63,25 @@ def render_html_editor(key: str, label: str, value: str = "", height: int = 200,
     if help_text:
         st.caption(help_text)
     
-    # Render the editor
+    # Get current value from session state or use provided value
+    textarea_key = f"{key}_html"
+    
+    # Initialize session state if needed (BEFORE creating any widgets)
+    if textarea_key not in st.session_state:
+        st.session_state[textarea_key] = value
+    if editor_key not in st.session_state:
+        st.session_state[editor_key] = value
+    
+    # Get the current value from session state
+    # This will be used as the initial value for both editor and textarea
+    current_value = st.session_state.get(textarea_key, value)
+    
+    # Update the editor HTML with current value from session state
+    # This ensures the editor always shows the latest content
+    escaped_value = current_value.replace('"', '&quot;').replace("'", "&#39;")
+    editor_html = editor_html.replace('{{INITIAL_VALUE}}', escaped_value)
+    
+    # Render the editor first with current content
     # Note: st.components.v1.html() doesn't accept 'key' parameter
     st.components.v1.html(
         editor_html, 
@@ -69,20 +89,28 @@ def render_html_editor(key: str, label: str, value: str = "", height: int = 200,
     )
     
     # Use a text area to capture/edit HTML content
-    # The editor updates this via JavaScript, but user can also edit directly
-    current_value = st.session_state.get(editor_key, value)
-    
+    # Streamlit automatically updates session_state[textarea_key] when user interacts
+    # The value parameter is the initial value, and the returned value is the current value
+    # Disable autofocus to prevent interrupting the editor
     html_content = st.text_area(
         f"{label} (HTML Source - Edit here or use editor above)",
         value=current_value,
-        key=f"{key}_html",
-        help=f"HTML content. Edit directly or use the rich text editor above. {help_text}",
-        height=min(height, 150)
+        key=textarea_key,
+        help=f"HTML content. Edit directly or use the rich text editor above. Changes here will sync to the editor. {help_text}",
+        height=min(height, 150),
+        disabled=False  # Keep enabled but without autofocus
     )
     
-    # Update session state
-    st.session_state[editor_key] = html_content
+    # IMPORTANT: Do NOT modify session_state[textarea_key] after widget creation
+    # Streamlit already handles this automatically. The html_content returned
+    # is already the value in session_state[textarea_key]
     
+    # We can update editor_key since it's a different key (not the widget key)
+    # But only if it's different to avoid unnecessary updates
+    if st.session_state.get(editor_key) != html_content:
+        st.session_state[editor_key] = html_content
+    
+    # Return the value from the widget (which Streamlit has already stored in session_state)
     return html_content
 
 
