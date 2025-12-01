@@ -63,7 +63,9 @@ class NewsletterGenerator:
         subject: str,
         background_color: str,
         text_color: str,
-        layers: List[Dict]
+        header_config: Dict,
+        layers: List[Dict],
+        footer_config: Dict
     ) -> str:
         """
         Generate complete HTML newsletter with inline CSS.
@@ -72,7 +74,9 @@ class NewsletterGenerator:
             subject: Email subject line
             background_color: Background color hex code
             text_color: Primary text color hex code
+            header_config: Dictionary with header configuration
             layers: List of layer dictionaries containing content data
+            footer_config: Dictionary with footer configuration
             
         Returns:
             Complete HTML string ready for email
@@ -92,10 +96,14 @@ class NewsletterGenerator:
             '<table role="presentation" style="width: 600px; max-width: 100%; border-collapse: collapse; '
             f'background-color: {background_color}; margin: 0 auto;">',
         ]
+
+        html_parts.extend(NewsletterGenerator._generate_header_html(subject, header_config))
         
         # Add each layer
         for layer in layers:
             html_parts.extend(NewsletterGenerator._generate_layer_html(layer, text_color))
+
+        html_parts.extend(NewsletterGenerator._generate_footer_html(footer_config))
         
         # Close tables and body
         html_parts.extend([
@@ -147,23 +155,22 @@ class NewsletterGenerator:
         # Title (H2)
         if layer.get('title'):
             html_parts.append(
-                f'<h2 style="color: {text_color}; margin: 0 0 10px 0; font-size: 24px; font-weight: bold;">'
+                f'<h2 style="color: {text_color}; margin: 0 0 10px 0; font-size: 26px; font-weight: 700; line-height: 1.2;">'
                 f'{layer["title"]}</h2>'
             )
         
-        # Subtitle (H3)
+        # Subtitle (H3) - Subtítulo (H
         if layer.get('subtitle'):
             html_parts.append(
-                f'<h3 style="color: {text_color}; margin: 0 0 15px 0; font-size: 18px; font-weight: 600; opacity: 0.9;">'
+                f'<h3 style="color: {text_color}; margin: 0 0 15px 0; font-size: 18px; font-weight: 500; line-height: 1.4; opacity: 0.8;">'
                 f'{layer["subtitle"]}</h3>'
             )
         
-        # Main content
+        # Main content - Contenido principal
         if layer.get('content'):
-            # Convert newlines to <br> tags
             content = layer['content'].replace('\n', '<br>')
             html_parts.append(
-                f'<p style="color: {text_color}; margin: 0 0 20px 0; font-size: 16px; line-height: 1.6;">'
+                f'<p style="color: {text_color}; margin: 0 0 20px 0; font-size: 16px; line-height: 1.5;">'
                 f'{content}</p>'
             )
         
@@ -178,13 +185,129 @@ class NewsletterGenerator:
         
         return html_parts
 
+    @staticmethod
+    def _generate_header_html(subject: str, header_config: Dict) -> List[str]:
+        """
+        Generates the pre-header (hidden text) and main header section.
+        
+        Args:
+            subject: Email subject line
+            header_config: Dictionary with header_title, header_image_base64, pre_header_text
+        """
+        html_parts = []
+
+        # 1. Pre-Header Text (Texto oculto para la vista previa del email)
+        pre_header_text = header_config.get('pre_header_text', f'{subject} - Read our latest news!')
+        html_parts.append('<tr>')
+        # Estilos de email para ocultar texto pero hacerlo legible para el pre-header
+        html_parts.append(
+            '<td style="padding: 0; font-size: 0; line-height: 0; display: none !important; '
+            'max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden; mso-hide: all;">'
+        )
+        html_parts.append(
+            f'<span style="font-size: 1px; color: #ffffff; line-height: 1px;">{pre_header_text}</span>'
+        )
+        html_parts.append('</td>')
+        html_parts.append('</tr>')
+        
+        # 2. Main Header/Logo Area
+        header_title = header_config.get('header_title', subject)
+        header_image_base64 = header_config.get('header_image_base64')
+        header_bg_color = header_config.get('header_bg_color', '#f0f0f0')
+        
+        html_parts.append('<tr>')
+        html_parts.append(
+            f'<td align="center" style="padding: 20px 20px; background-color: {header_bg_color}; border-bottom: 2px solid #e0e0e0;">'
+        )
+        
+        # Logo/Image if provided
+        if header_image_base64:
+            html_parts.append(
+                f'<img src="{header_image_base64}" alt="{header_title}" '
+                f'style="max-width: 200px; height: auto; margin-bottom: 10px; display: block;">'
+            )
+        
+        # Header Title
+        if header_title:
+            html_parts.append(
+                f'<h1 style="color: #333333; font-size: 28px; margin: 0; font-weight: bold; line-height: 1.3;">{header_title}</h1>'
+            )
+        
+        html_parts.append('</td>')
+        html_parts.append('</tr>')
+
+        return html_parts
+
+    @staticmethod
+    def _generate_footer_html(footer_config: Dict) -> List[str]:
+        """
+        Generates the legal footer with company info and unsubscribe link.
+        
+        Args:
+            footer_config: Dictionary with company_name, address, copyright_text, 
+                          unsubscribe_link, view_online_link, disclaimer_text
+        """
+        footer_color = footer_config.get('footer_color', "#999999")
+        html_parts = []
+        
+        # Separador superior (usando estructura de tabla para compatibilidad con email)
+        html_parts.append('<tr>')
+        html_parts.append('<td style="padding: 20px 20px 10px 20px;">')
+        html_parts.append('<table role="presentation" style="width: 100%; border-collapse: collapse;">')
+        html_parts.append('<tr>')
+        html_parts.append('<td style="height: 1px; background-color: #e0e0e0; line-height: 1px; font-size: 1px;">&nbsp;</td>')
+        html_parts.append('</tr>')
+        html_parts.append('</table>')
+        html_parts.append('</td>')
+        html_parts.append('</tr>')
+        
+        # Contenido del Footer
+        html_parts.append('<tr>')
+        html_parts.append(
+            f'<td align="center" style="padding: 10px 20px 30px 20px; font-size: 12px; line-height: 18px; color: {footer_color};">'
+        )
+        
+        # Disclaimer
+        disclaimer = footer_config.get('disclaimer_text', 'This email was sent to you because you subscribed to our newsletter.')
+        if disclaimer:
+            html_parts.append(f'{disclaimer}<br>')
+        
+        # Copyright
+        company_name = footer_config.get('company_name', 'Your Company Name')
+        copyright_text = footer_config.get('copyright_text', f'© 2024 {company_name}. All rights reserved.')
+        # Replace {company} placeholder if present
+        if copyright_text and '{company}' in copyright_text:
+            copyright_text = copyright_text.replace('{company}', company_name)
+        if copyright_text:
+            html_parts.append(f'{copyright_text}<br>')
+        
+        # Address
+        address = footer_config.get('address', '123 Main Street, Suite 400, City, State 12345')
+        if address:
+            html_parts.append(f'{address}<br><br>')
+        
+        # Enlaces de Unsubscribe/View Online
+        unsubscribe_link = footer_config.get('unsubscribe_link', '#UNSUBSCRIBE_LINK')
+        view_online_link = footer_config.get('view_online_link', '#VIEW_ONLINE_LINK')
+        
+        html_parts.append(
+            f'<a href="{unsubscribe_link}" target="_blank" style="color: {footer_color}; text-decoration: underline;">Unsubscribe</a>'
+        )
+        html_parts.append(
+            f' &bull; <a href="{view_online_link}" target="_blank" style="color: {footer_color}; text-decoration: underline;">View Online</a>'
+        )
+        html_parts.append('</td>')
+        html_parts.append('</tr>')
+        
+        return html_parts
+
 
 def render_sidebar() -> Dict:
     """
     Render sidebar configuration inputs.
     
     Returns:
-        Dictionary with configuration values
+        Dictionary with configuration values including header and footer configs
     """
     with st.sidebar:
         st.header("📧 Newsletter Configuration")
@@ -223,6 +346,138 @@ def render_sidebar() -> Dict:
             'background_color': background_color,
             'text_color': text_color
         }
+
+
+def render_header_config(email_subject: str) -> Dict:
+    """
+    Render header configuration form in the main area.
+    
+    Args:
+        email_subject: Default email subject for header title
+        
+    Returns:
+        Dictionary with header configuration
+    """
+    st.header("📋 Header Configuration")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        header_title = st.text_input(
+            "Header Title",
+            value=email_subject,
+            key="header_title",
+            help="The title displayed in the newsletter header"
+        )
+        
+        header_image_file = st.file_uploader(
+            "Header Logo/Image",
+            type=['jpg', 'jpeg', 'png', 'JPG', 'JPEG', 'PNG'],
+            key="header_image",
+            help="Upload a logo or image for the header (optional)"
+        )
+    
+    with col2:
+        pre_header_text = st.text_input(
+            "Pre-Header Text",
+            value=f"{email_subject} - Read our latest news!",
+            key="pre_header_text",
+            help="Hidden text shown in email preview (optional)"
+        )
+        
+        header_bg_color = st.color_picker(
+            "Header Background Color",
+            value="#f0f0f0",
+            key="header_bg_color",
+            help="Background color for the header section"
+        )
+    
+    # Process header image
+    header_image_base64 = None
+    if header_image_file is not None:
+        header_image_base64 = ImageProcessor.convert_to_base64(header_image_file)
+    
+    return {
+        'header_title': header_title,
+        'header_image_base64': header_image_base64,
+        'pre_header_text': pre_header_text,
+        'header_bg_color': header_bg_color
+    }
+
+
+def render_footer_config() -> Dict:
+    """
+    Render footer configuration form in the main area.
+    
+    Returns:
+        Dictionary with footer configuration
+    """
+    st.header("📄 Footer Configuration")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        company_name = st.text_input(
+            "Company Name",
+            value="Your Company Name",
+            key="company_name",
+            help="Your company or organization name"
+        )
+        
+        address = st.text_area(
+            "Company Address",
+            value="123 Main Street, Suite 400, City, State 12345",
+            key="address",
+            help="Company physical address",
+            height=100
+        )
+        
+        copyright_text = st.text_input(
+            "Copyright Text",
+            value="© 2024 Your Company Name. All rights reserved.",
+            key="copyright_text",
+            help="Copyright notice text (you can use {company} placeholder)"
+        )
+    
+    with col2:
+        disclaimer_text = st.text_area(
+            "Disclaimer Text",
+            value="This email was sent to you because you subscribed to our newsletter.",
+            key="disclaimer_text",
+            help="Legal disclaimer text",
+            height=100
+        )
+        
+        unsubscribe_link = st.text_input(
+            "Unsubscribe Link",
+            value="#UNSUBSCRIBE_LINK",
+            key="unsubscribe_link",
+            help="URL for unsubscribe link"
+        )
+        
+        view_online_link = st.text_input(
+            "View Online Link",
+            value="#VIEW_ONLINE_LINK",
+            key="view_online_link",
+            help="URL for viewing newsletter online"
+        )
+        
+        footer_color = st.color_picker(
+            "Footer Text Color",
+            value="#999999",
+            key="footer_color",
+            help="Text color for footer content"
+        )
+    
+    return {
+        'company_name': company_name,
+        'address': address,
+        'copyright_text': copyright_text,
+        'disclaimer_text': disclaimer_text,
+        'unsubscribe_link': unsubscribe_link,
+        'view_online_link': view_online_link,
+        'footer_color': footer_color
+    }
 
 
 def render_layer_form(layer_number: int) -> Dict:
@@ -304,11 +559,15 @@ def main():
     st.title("📧 Newsletter Builder")
     st.markdown("Create responsive HTML newsletters with dynamic content layers")
     
-    # Render sidebar and get configuration
+    # Render sidebar and get basic configuration
     config = render_sidebar()
     
-    # Main content area
-    st.header("Content Layers")
+    # Header Configuration (in main area)
+    header_config = render_header_config(config['email_subject'])
+    st.divider()
+    
+    # Main content area - Content Layers
+    st.header("📝 Content Layers")
     
     # Generate forms for each layer
     layers = []
@@ -317,6 +576,10 @@ def main():
         layers.append(layer_data)
         st.divider()
     
+    # Footer Configuration (in main area)
+    footer_config = render_footer_config()
+    st.divider()
+    
     # Generate Newsletter button
     if st.button("🚀 Generate Newsletter", type="primary", use_container_width=True):
         # Generate HTML
@@ -324,7 +587,9 @@ def main():
             subject=config['email_subject'],
             background_color=config['background_color'],
             text_color=config['text_color'],
-            layers=layers
+            header_config=header_config,
+            layers=layers,
+            footer_config=footer_config
         )
         
         # Store in session state for download
