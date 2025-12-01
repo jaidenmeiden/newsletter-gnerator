@@ -12,6 +12,157 @@ from typing import Dict, List, Optional
 import streamlit as st
 from PIL import Image
 from streamlit_quill import st_quill
+from pymongo import MongoClient
+from pymongo.errors import ConnectionFailure, DuplicateKeyError
+
+
+class MongoManager:
+    """Manages MongoDB connection and operations for newsletter templates."""
+    
+    def __init__(self, connection_string: str = "mongodb://mongo:27017/", 
+                 database_name: str = "newsletter_db", 
+                 collection_name: str = "templates"):
+        """
+        Initialize MongoDB connection.
+        
+        Args:
+            connection_string: MongoDB connection string
+            database_name: Name of the database
+            collection_name: Name of the collection
+        """
+        self.connection_string = connection_string
+        self.database_name = database_name
+        self.collection_name = collection_name
+        self.client = None
+        self.db = None
+        self.collection = None
+    
+    def connect(self) -> bool:
+        """
+        Establish connection to MongoDB.
+        
+        Returns:
+            True if connection successful, False otherwise
+        """
+        try:
+            self.client = MongoClient(self.connection_string, serverSelectionTimeoutMS=5000)
+            # Test connection
+            self.client.server_info()
+            self.db = self.client[self.database_name]
+            self.collection = self.db[self.collection_name]
+            # Create unique index on 'name' field
+            self.collection.create_index("name", unique=True)
+            return True
+        except ConnectionFailure:
+            return False
+        except Exception as e:
+            st.error(f"Error connecting to MongoDB: {str(e)}")
+            return False
+    
+    def save_template(self, name: str, config: dict, header_config: dict, 
+                     layers: list, footer_config: dict, 
+                     subscription_config: Optional[dict] = None) -> bool:
+        """
+        Save or update a newsletter template.
+        
+        Args:
+            name: Unique template name
+            config: Basic configuration (subject, colors, etc.)
+            header_config: Header configuration
+            layers: List of layer dictionaries
+            footer_config: Footer configuration
+            subscription_config: Subscription configuration (optional)
+            
+        Returns:
+            True if save successful, False otherwise
+        """
+        if not self.collection:
+            if not self.connect():
+                return False
+        
+        try:
+            template_data = {
+                'name': name,
+                'config': config,
+                'header_config': header_config,
+                'layers': layers,
+                'footer_config': footer_config,
+                'subscription_config': subscription_config
+            }
+            
+            # Use upsert to update if exists, insert if not
+            self.collection.update_one(
+                {'name': name},
+                {'$set': template_data},
+                upsert=True
+            )
+            return True
+        except DuplicateKeyError:
+            st.error(f"Template name '{name}' already exists. Please use a different name.")
+            return False
+        except Exception as e:
+            st.error(f"Error saving template: {str(e)}")
+            return False
+    
+    def load_templates(self) -> List[str]:
+        """
+        Get list of all saved template names.
+        
+        Returns:
+            List of template names
+        """
+        if not self.collection:
+            if not self.connect():
+                return []
+        
+        try:
+            templates = self.collection.find({}, {'name': 1, '_id': 0})
+            return [template['name'] for template in templates]
+        except Exception as e:
+            st.error(f"Error loading templates: {str(e)}")
+            return []
+    
+    def load_template_data(self, name: str) -> Optional[dict]:
+        """
+        Load template data by name.
+        
+        Args:
+            name: Template name to load
+            
+        Returns:
+            Dictionary with template data or None if not found
+        """
+        if not self.collection:
+            if not self.connect():
+                return None
+        
+        try:
+            template = self.collection.find_one({'name': name})
+            if template:
+                # Remove MongoDB _id from result
+                template.pop('_id', None)
+                return template
+            return None
+        except Exception as e:
+            st.error(f"Error loading template: {str(e)}")
+            return None
+    
+    def close(self):
+        """Close MongoDB connection."""
+        if self.client:
+            self.client.close()
+
+
+# Global MongoDB manager instance
+_mongo_manager = None
+
+
+def get_mongo_manager() -> MongoManager:
+    """Get or create global MongoDB manager instance."""
+    global _mongo_manager
+    if _mongo_manager is None:
+        _mongo_manager = MongoManager()
+    return _mongo_manager
 
 
 class ImageProcessor:
@@ -665,7 +816,8 @@ def render_sidebar() -> Dict:
         
         email_subject = st.text_input(
             "Email Subject",
-            value="Newsletter",
+            value=st.session_state.get("Email Subject", "Newsletter"),
+            key="Email Subject",
             help="The subject line for your newsletter email"
         )
         
@@ -673,8 +825,9 @@ def render_sidebar() -> Dict:
             "Number of Layers",
             min_value=1,
             max_value=10,
-            value=1,
+            value=st.session_state.get("Number of Layers", 1),
             step=1,
+            key="Number of Layers",
             help="Select the number of content sections (layers) in your newsletter"
         )
         
@@ -682,44 +835,58 @@ def render_sidebar() -> Dict:
             "Maximum Newsletter Width (px)",
             min_value=300,
             max_value=1200,
-            value=1000,
+            value=st.session_state.get("Maximum Newsletter Width (px)", 1000),
             step=10,
+            key="Maximum Newsletter Width (px)",
             help="Maximum width of the newsletter in pixels"
         )
         
+        font_options = [
+            "Oswald, sans-serif",
+            "Arial, sans-serif",
+            "Helvetica, sans-serif",
+            "Georgia, serif",
+            "Times New Roman, serif",
+            "Verdana, sans-serif",
+            "Courier New, monospace",
+            "Trebuchet MS, sans-serif",
+            "Comic Sans MS, cursive"
+        ]
+        font_family_index = st.session_state.get("Font Family", 0)
+        if isinstance(font_family_index, str):
+            # If it's a string, find the index
+            try:
+                font_family_index = font_options.index(font_family_index)
+            except ValueError:
+                font_family_index = 0
+        
         font_family = st.selectbox(
             "Font Family",
-            options=[
-                "Oswald, sans-serif",
-                "Arial, sans-serif",
-                "Helvetica, sans-serif",
-                "Georgia, serif",
-                "Times New Roman, serif",
-                "Verdana, sans-serif",
-                "Courier New, monospace",
-                "Trebuchet MS, sans-serif",
-                "Comic Sans MS, cursive"
-            ],
-            index=0,
+            options=font_options,
+            index=font_family_index,
+            key="Font Family",
             help="Font family for the newsletter text"
         )
         
         st.subheader("Color Settings")
         background_color = st.color_picker(
             "Background Color",
-            value="#FFFFFF",
+            value=st.session_state.get("Background Color", "#FFFFFF"),
+            key="Background Color",
             help="Choose the background color for your newsletter"
         )
         
         text_color = st.color_picker(
             "Text Color",
-            value="#000000",
+            value=st.session_state.get("Text Color", "#000000"),
+            key="Text Color",
             help="Choose the primary text color for your newsletter"
         )
         
         include_subscription = st.checkbox(
             "Include Subscription Section",
-            value=False,
+            value=st.session_state.get("Include Subscription Section", False),
+            key="Include Subscription Section",
             help="Include subscription/unsubscribe section in the newsletter"
         )
         
@@ -765,9 +932,11 @@ def render_header_config(email_subject: str) -> Dict:
         )
     
     # Second row: Image Source
+    image_source_index = st.session_state.get("header_image_source", 0)
     image_source = st.radio(
         "Image Source",
         options=["External URL", "Upload Image (Base64)"],
+        index=image_source_index,
         key="header_image_source",
         help="Choose how to provide the header image"
     )
@@ -781,20 +950,33 @@ def render_header_config(email_subject: str) -> Dict:
         if image_source == "External URL":
             header_image_url = st.text_input(
                 "Header Image URL",
-                value="",
+                value=st.session_state.get("header_image_url", ""),
                 key="header_image_url",
                 help="Enter the URL of the image from an external server"
             )
         else:
+            # Check if there's a base64 image in session_state (from loaded template)
+            existing_base64 = st.session_state.get("header_image_base64")
+            if existing_base64:
+                st.info("ℹ️ Imagen cargada desde plantilla guardada")
+                header_image_base64 = existing_base64
+            else:
+                header_image_base64 = None
+            
             header_image_file = st.file_uploader(
                 "Header Logo/Image",
                 type=['jpg', 'jpeg', 'png', 'JPG', 'JPEG', 'PNG'],
                 key="header_image",
                 help="Upload a logo or image for the header (optional)"
             )
-            # Process header image
+            # Process header image (new upload takes precedence)
             if header_image_file is not None:
                 header_image_base64 = ImageProcessor.convert_to_base64(header_image_file)
+                # Update session_state with new image
+                st.session_state["header_image_base64"] = header_image_base64
+            elif existing_base64:
+                # Use existing base64 from session_state
+                header_image_base64 = existing_base64
     
     with col_row3_2:
         image_width = st.number_input(
@@ -924,9 +1106,11 @@ def render_footer_config() -> Dict:
         )
     
     # Second row: Image Source (full width)
+    image_source_index = st.session_state.get("footer_image_source", 0)
     image_source = st.radio(
         "Image Source",
         options=["External URL", "Upload Image (Base64)"],
+        index=image_source_index,
         key="footer_image_source",
         help="Choose how to provide the footer image"
     )
@@ -940,20 +1124,33 @@ def render_footer_config() -> Dict:
         if image_source == "External URL":
             footer_image_url = st.text_input(
                 "Footer Image URL",
-                value="",
+                value=st.session_state.get("footer_image_url", ""),
                 key="footer_image_url",
                 help="Enter the URL of the image from an external server"
             )
         else:
+            # Check if there's a base64 image in session_state (from loaded template)
+            existing_base64 = st.session_state.get("footer_image_base64")
+            if existing_base64:
+                st.info("ℹ️ Imagen cargada desde plantilla guardada")
+                footer_image_base64 = existing_base64
+            else:
+                footer_image_base64 = None
+            
             footer_image_file = st.file_uploader(
                 "Footer Logo/Image",
                 type=['jpg', 'jpeg', 'png', 'JPG', 'JPEG', 'PNG'],
                 key="footer_image",
                 help="Upload a logo or image for the footer (optional)"
             )
-            # Process footer image
+            # Process footer image (new upload takes precedence)
             if footer_image_file is not None:
                 footer_image_base64 = ImageProcessor.convert_to_base64(footer_image_file)
+                # Update session_state with new image
+                st.session_state["footer_image_base64"] = footer_image_base64
+            elif existing_base64:
+                # Use existing base64 from session_state
+                footer_image_base64 = existing_base64
     
     with col_row2_2:
         image_width = st.number_input(
@@ -1472,12 +1669,13 @@ def render_layer_form(layer_number: int) -> Dict:
     st.markdown("**Image Configuration**")
     
     # Image source selection
+    image_source_index = st.session_state.get(f"image_source_{layer_number}", 0)
     image_source = st.radio(
         f"Image Source - Layer {layer_number}",
         options=["External URL", "Upload Image (Base64)"],
+        index=image_source_index,
         key=f"image_source_{layer_number}",
-        help="Choose how to provide the image",
-        index=0  # Default to URL
+        help="Choose how to provide the image"
     )
     
     col_img1, col_img2 = st.columns(2)
@@ -1489,22 +1687,36 @@ def render_layer_form(layer_number: int) -> Dict:
         if image_source == "External URL":
             image_url = st.text_input(
                 f"Image URL - Layer {layer_number}",
-                value="",
+                value=st.session_state.get(f"image_url_{layer_number}", ""),
                 key=f"image_url_{layer_number}",
                 help="Enter the URL of the image from an external server"
             )
         else:
+            # Check if there's a base64 image in session_state (from loaded template)
+            existing_base64 = st.session_state.get(f"image_base64_{layer_number}")
+            if existing_base64:
+                st.info(f"ℹ️ Imagen cargada desde plantilla guardada (Layer {layer_number})")
+                image_base64 = existing_base64
+            else:
+                image_base64 = None
+            
             image_file = st.file_uploader(
                 f"Upload Image - Layer {layer_number}",
                 type=['jpg', 'jpeg', 'png', 'JPG', 'JPEG', 'PNG'],
                 key=f"image_{layer_number}",
                 help="Upload an image for this layer (JPG or PNG)"
             )
-            # Process image to Base64
+            # Process image to Base64 (new upload takes precedence)
             if image_file is not None:
                 image_base64 = ImageProcessor.convert_to_base64(image_file)
                 if image_base64 is None:
                     st.warning(f"⚠️ Error processing image for Layer {layer_number}. Please try uploading again.")
+                else:
+                    # Update session_state with new image
+                    st.session_state[f"image_base64_{layer_number}"] = image_base64
+            elif existing_base64:
+                # Use existing base64 from session_state
+                image_base64 = existing_base64
         
         image_alignment = st.selectbox(
             f"Image Position - Layer {layer_number}",
@@ -1558,6 +1770,204 @@ def render_layer_form(layer_number: int) -> Dict:
     }
 
 
+def apply_template_to_session_state(template_data: dict):
+    """
+    Apply loaded template data to Streamlit session_state.
+    
+    Args:
+        template_data: Dictionary containing template configuration
+    """
+    config = template_data.get('config', {})
+    header_config = template_data.get('header_config', {})
+    layers = template_data.get('layers', [])
+    footer_config = template_data.get('footer_config', {})
+    subscription_config = template_data.get('subscription_config', {})
+    
+    # Apply basic config to session_state
+    if 'email_subject' in config:
+        st.session_state['Email Subject'] = config['email_subject']
+    if 'num_layers' in config:
+        st.session_state['Number of Layers'] = config['num_layers']
+    if 'max_width' in config:
+        st.session_state['Maximum Newsletter Width (px)'] = config['max_width']
+    if 'font_family' in config:
+        font_options = [
+            "Oswald, sans-serif",
+            "Arial, sans-serif",
+            "Helvetica, sans-serif",
+            "Georgia, serif",
+            "Times New Roman, serif",
+            "Verdana, sans-serif",
+            "Courier New, monospace",
+            "Trebuchet MS, sans-serif",
+            "Comic Sans MS, cursive"
+        ]
+        if config['font_family'] in font_options:
+            st.session_state['Font Family'] = font_options.index(config['font_family'])
+        else:
+            st.session_state['Font Family'] = 0  # Default to first option
+    if 'background_color' in config:
+        st.session_state['Background Color'] = config['background_color']
+    if 'text_color' in config:
+        st.session_state['Text Color'] = config['text_color']
+    if 'include_subscription' in config:
+        st.session_state['Include Subscription Section'] = config['include_subscription']
+    
+    # Apply header config
+    if 'pre_header_text' in header_config:
+        st.session_state['pre_header_text'] = header_config['pre_header_text']
+    if 'header_bg_color' in header_config:
+        st.session_state['header_bg_color'] = header_config['header_bg_color']
+    # Set image source based on what's available
+    if 'header_image_url' in header_config and header_config.get('header_image_url'):
+        st.session_state['header_image_url'] = header_config['header_image_url']
+        st.session_state['header_image_source'] = 0  # External URL
+    elif 'header_image_base64' in header_config and header_config.get('header_image_base64'):
+        st.session_state['header_image_base64'] = header_config['header_image_base64']
+        st.session_state['header_image_source'] = 1  # Upload Image (Base64)
+    if 'image_width' in header_config:
+        st.session_state['header_image_width'] = header_config['image_width']
+    if 'header_title' in header_config:
+        st.session_state['header_title'] = header_config['header_title']
+    if 'header_text' in header_config:
+        st.session_state['header_text'] = header_config['header_text']
+    if 'header_title_color' in header_config:
+        st.session_state['header_title_color'] = header_config['title_color']
+    if 'header_title_font_size' in header_config:
+        st.session_state['header_title_font_size'] = header_config['title_font_size']
+    if 'header_title_bold' in header_config:
+        st.session_state['header_title_bold'] = header_config['title_bold']
+    if 'header_text_color' in header_config:
+        st.session_state['header_text_color'] = header_config['text_color']
+    if 'header_text_font_size' in header_config:
+        st.session_state['header_text_font_size'] = header_config['text_font_size']
+    
+    # Apply layers
+    for i, layer in enumerate(layers, start=1):
+        if 'title' in layer:
+            st.session_state[f'title_{i}'] = layer['title']
+        if 'subtitle' in layer:
+            st.session_state[f'subtitle_{i}'] = layer['subtitle']
+        if 'subtitle2' in layer:
+            st.session_state[f'subtitle2_{i}'] = layer['subtitle2']
+        if 'content' in layer:
+            st.session_state[f'content_{i}'] = layer['content']
+        # Set image source based on what's available
+        if 'image_url' in layer and layer.get('image_url'):
+            st.session_state[f'image_url_{i}'] = layer['image_url']
+            st.session_state[f'image_source_{i}'] = 0  # External URL
+        elif 'image_base64' in layer and layer.get('image_base64'):
+            st.session_state[f'image_base64_{i}'] = layer['image_base64']
+            st.session_state[f'image_source_{i}'] = 1  # Upload Image (Base64)
+        if 'image_alignment' in layer:
+            alignment_index = 0 if layer['image_alignment'].lower() == 'left' else 1
+            st.session_state[f'alignment_{i}'] = alignment_index
+        if 'image_width' in layer:
+            st.session_state[f'image_width_{i}'] = layer['image_width']
+        if 'padding' in layer:
+            st.session_state[f'padding_{i}'] = layer['padding']
+        if 'title_color' in layer:
+            st.session_state[f'title_color_{i}'] = layer['title_color']
+        if 'subtitle_color' in layer:
+            st.session_state[f'subtitle_color_{i}'] = layer['subtitle_color']
+        if 'subtitle2_color' in layer:
+            st.session_state[f'subtitle2_color_{i}'] = layer['subtitle2_color']
+        if 'title_font_size' in layer:
+            st.session_state[f'title_font_size_{i}'] = layer['title_font_size']
+        if 'subtitle_font_size' in layer:
+            st.session_state[f'subtitle_font_size_{i}'] = layer['subtitle_font_size']
+        if 'subtitle2_font_size' in layer:
+            st.session_state[f'subtitle2_font_size_{i}'] = layer['subtitle2_font_size']
+        if 'subtitle_bold' in layer:
+            st.session_state[f'subtitle_bold_{i}'] = layer['subtitle_bold']
+        if 'subtitle2_bold' in layer:
+            st.session_state[f'subtitle2_bold_{i}'] = layer['subtitle2_bold']
+        if 'content_font_size' in layer:
+            st.session_state[f'content_font_size_{i}'] = layer['content_font_size']
+        if 'content_color' in layer:
+            st.session_state[f'content_color_{i}'] = layer['content_color']
+    
+    # Apply footer config
+    if 'footer_bg_color' in footer_config:
+        st.session_state['footer_bg_color'] = footer_config['footer_bg_color']
+    # Set footer image source based on what's available
+    if 'footer_image_url' in footer_config and footer_config.get('footer_image_url'):
+        st.session_state['footer_image_url'] = footer_config['footer_image_url']
+        st.session_state['footer_image_source'] = 0  # External URL
+    elif 'footer_image_base64' in footer_config and footer_config.get('footer_image_base64'):
+        st.session_state['footer_image_base64'] = footer_config['footer_image_base64']
+        st.session_state['footer_image_source'] = 1  # Upload Image (Base64)
+    if 'image_width' in footer_config:
+        st.session_state['footer_image_width'] = footer_config['image_width']
+    if 'footer_alignment' in footer_config:
+        alignment_map = {'Left': 0, 'Center': 1, 'Right': 2}
+        st.session_state['footer_alignment'] = alignment_map.get(footer_config['footer_alignment'], 0)
+    if 'footer_company_name' in footer_config:
+        st.session_state['footer_company_name'] = footer_config['company_name']
+    if 'footer_address' in footer_config:
+        st.session_state['footer_address'] = footer_config['address']
+    if 'footer_directors' in footer_config:
+        st.session_state['footer_directors'] = footer_config['directors']
+    # Footer styling
+    if 'company_name_color' in footer_config:
+        st.session_state['footer_company_name_color'] = footer_config['company_name_color']
+    if 'company_name_size' in footer_config:
+        st.session_state['footer_company_name_size'] = footer_config['company_name_size']
+    if 'company_name_bold' in footer_config:
+        st.session_state['footer_company_name_bold'] = footer_config['company_name_bold']
+    if 'address_color' in footer_config:
+        st.session_state['footer_address_color'] = footer_config['address_color']
+    if 'address_size' in footer_config:
+        st.session_state['footer_address_size'] = footer_config['address_size']
+    if 'address_bold' in footer_config:
+        st.session_state['footer_address_bold'] = footer_config['address_bold']
+    if 'directors_color' in footer_config:
+        st.session_state['footer_directors_color'] = footer_config['directors_color']
+    if 'directors_size' in footer_config:
+        st.session_state['footer_directors_size'] = footer_config['directors_size']
+    if 'directors_bold' in footer_config:
+        st.session_state['footer_directors_bold'] = footer_config['directors_bold']
+    # Social media
+    if 'social_media_type' in footer_config:
+        social_type_index = 0 if footer_config['social_media_type'] == 'URLs Only' else 1
+        st.session_state['footer_social_type'] = social_type_index
+    if 'social_media_label' in footer_config:
+        st.session_state['footer_social_label'] = footer_config['social_media_label']
+    if 'social_label_color' in footer_config:
+        st.session_state['footer_social_label_color'] = footer_config['social_label_color']
+    if 'social_label_size' in footer_config:
+        st.session_state['footer_social_label_size'] = footer_config['social_label_size']
+    if 'social_label_bold' in footer_config:
+        st.session_state['footer_social_label_bold'] = footer_config['social_label_bold']
+    if 'social_image_width' in footer_config:
+        st.session_state['footer_social_image_width'] = footer_config['social_image_width']
+    if 'facebook_url' in footer_config:
+        st.session_state['footer_facebook'] = footer_config['facebook_url']
+    if 'linkedin_url' in footer_config:
+        st.session_state['footer_linkedin'] = footer_config['linkedin_url']
+    if 'xing_url' in footer_config:
+        st.session_state['footer_xing'] = footer_config['xing_url']
+    if 'instagram_url' in footer_config:
+        st.session_state['footer_instagram'] = footer_config['instagram_url']
+    
+    # Apply subscription config
+    if subscription_config:
+        if 'company_name' in subscription_config:
+            st.session_state['company_name'] = subscription_config['company_name']
+        if 'address' in subscription_config:
+            st.session_state['address'] = subscription_config['address']
+        if 'copyright_text' in subscription_config:
+            st.session_state['copyright_text'] = subscription_config['copyright_text']
+        if 'disclaimer_text' in subscription_config:
+            st.session_state['disclaimer_text'] = subscription_config['disclaimer_text']
+        if 'unsubscribe_link' in subscription_config:
+            st.session_state['unsubscribe_link'] = subscription_config['unsubscribe_link']
+        if 'view_online_link' in subscription_config:
+            st.session_state['view_online_link'] = subscription_config['view_online_link']
+        if 'footer_color' in subscription_config:
+            st.session_state['footer_color'] = subscription_config['footer_color']
+
+
 def main():
     """Main application entry point."""
     st.set_page_config(
@@ -1569,6 +1979,56 @@ def main():
     
     st.title("📧 Newsletter Builder")
     st.markdown("Create responsive HTML newsletters with dynamic content layers")
+    
+    # Template Management Section
+    st.header("💾 Template Management")
+    col_save, col_load = st.columns(2)
+    
+    with col_save:
+        st.subheader("Save Template")
+        template_name = st.text_input(
+            "Template Name",
+            value="",
+            key="template_name_input",
+            help="Enter a unique name for this template",
+            placeholder="e.g., Monthly Newsletter Template"
+        )
+        if st.button("💾 Guardar Plantilla", type="primary", use_container_width=True):
+            if not template_name or not template_name.strip():
+                st.error("⚠️ Por favor, ingresa un nombre para la plantilla.")
+            else:
+                # Get MongoDB manager
+                mongo_manager = get_mongo_manager()
+                
+                # We need to collect all data first, but we'll do it after rendering
+                # Store flag to save after rendering
+                st.session_state['save_template_flag'] = True
+                st.session_state['template_name_to_save'] = template_name.strip()
+    
+    with col_load:
+        st.subheader("Load Template")
+        mongo_manager = get_mongo_manager()
+        template_names = mongo_manager.load_templates()
+        
+        if template_names:
+            selected_template = st.selectbox(
+                "Select Template",
+                options=template_names,
+                key="template_selectbox",
+                help="Choose a template to load"
+            )
+            if st.button("📂 Cargar Plantilla", type="secondary", use_container_width=True):
+                template_data = mongo_manager.load_template_data(selected_template)
+                if template_data:
+                    apply_template_to_session_state(template_data)
+                    st.success(f"✅ Plantilla '{selected_template}' cargada exitosamente!")
+                    st.rerun()
+                else:
+                    st.error("⚠️ Error al cargar la plantilla.")
+        else:
+            st.info("No hay plantillas guardadas aún.")
+    
+    st.divider()
     
     # Render sidebar and get basic configuration
     config = render_sidebar()
@@ -1617,6 +2077,25 @@ def main():
         st.session_state['newsletter_subject'] = config['email_subject']
         
         st.success("✅ Newsletter generated successfully!")
+    
+    # Handle template saving (after all data is collected)
+    if st.session_state.get('save_template_flag', False):
+        template_name = st.session_state.get('template_name_to_save', '')
+        if template_name:
+            mongo_manager = get_mongo_manager()
+            success = mongo_manager.save_template(
+                name=template_name,
+                config=config,
+                header_config=header_config,
+                layers=layers,
+                footer_config=footer_config,
+                subscription_config=subscription_config
+            )
+            if success:
+                st.success(f"✅ Plantilla '{template_name}' guardada exitosamente!")
+            # Clear the flag
+            st.session_state['save_template_flag'] = False
+            st.session_state['template_name_to_save'] = ''
     
     # Preview and Download section
     if 'newsletter_html' in st.session_state:
