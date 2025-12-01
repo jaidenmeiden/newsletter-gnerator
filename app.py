@@ -76,7 +76,7 @@ class NewsletterGenerator:
         text_color: str,
         header_config: Dict,
         layers: List[Dict],
-        footer_config: Dict,
+        subscription_config: Dict = None,
         max_width: int = 1000,
         font_family: str = "Oswald, sans-serif"
     ) -> str:
@@ -89,7 +89,7 @@ class NewsletterGenerator:
             text_color: Primary text color hex code
             header_config: Dictionary with header configuration
             layers: List of layer dictionaries containing content data
-            footer_config: Dictionary with footer configuration
+            subscription_config: Dictionary with subscription configuration (optional)
             max_width: Maximum width of the newsletter in pixels
             font_family: Font family for the newsletter text
             
@@ -128,7 +128,9 @@ class NewsletterGenerator:
         for layer in layers:
             html_parts.extend(NewsletterGenerator._generate_layer_html(layer, text_color))
 
-        html_parts.extend(NewsletterGenerator._generate_footer_html(footer_config))
+        # Add subscription section if configured
+        if subscription_config:
+            html_parts.extend(NewsletterGenerator._generate_subscription_html(subscription_config))
         
         # Close tables and body
         html_parts.extend([
@@ -394,15 +396,15 @@ class NewsletterGenerator:
         return html_parts
 
     @staticmethod
-    def _generate_footer_html(footer_config: Dict) -> List[str]:
+    def _generate_subscription_html(subscription_config: Dict) -> List[str]:
         """
-        Generates the legal footer with company info and unsubscribe link.
+        Generates the subscription section with company info and unsubscribe link.
         
         Args:
-            footer_config: Dictionary with company_name, address, copyright_text, 
+            subscription_config: Dictionary with company_name, address, copyright_text, 
                           unsubscribe_link, view_online_link, disclaimer_text
         """
-        footer_color = footer_config.get('footer_color', "#999999")
+        footer_color = subscription_config.get('footer_color', "#999999")
         html_parts = []
         
         # Separador superior (usando estructura de tabla para compatibilidad con email)
@@ -423,13 +425,13 @@ class NewsletterGenerator:
         )
         
         # Disclaimer
-        disclaimer = footer_config.get('disclaimer_text', 'This email was sent to you because you subscribed to our newsletter.')
+        disclaimer = subscription_config.get('disclaimer_text', 'This email was sent to you because you subscribed to our newsletter.')
         if disclaimer:
             html_parts.append(f'{disclaimer}<br>')
         
         # Copyright
-        company_name = footer_config.get('company_name', 'Your Company Name')
-        copyright_text = footer_config.get('copyright_text', f'© 2024 {company_name}. All rights reserved.')
+        company_name = subscription_config.get('company_name', 'Your Company Name')
+        copyright_text = subscription_config.get('copyright_text', f'© 2024 {company_name}. All rights reserved.')
         # Replace {company} placeholder if present
         if copyright_text and '{company}' in copyright_text:
             copyright_text = copyright_text.replace('{company}', company_name)
@@ -437,13 +439,13 @@ class NewsletterGenerator:
             html_parts.append(f'{copyright_text}<br>')
         
         # Address
-        address = footer_config.get('address', '123 Main Street, Suite 400, City, State 12345')
+        address = subscription_config.get('address', '123 Main Street, Suite 400, City, State 12345')
         if address:
             html_parts.append(f'{address}<br><br>')
         
         # Enlaces de Unsubscribe/View Online
-        unsubscribe_link = footer_config.get('unsubscribe_link', '#UNSUBSCRIBE_LINK')
-        view_online_link = footer_config.get('view_online_link', '#VIEW_ONLINE_LINK')
+        unsubscribe_link = subscription_config.get('unsubscribe_link', '#UNSUBSCRIBE_LINK')
+        view_online_link = subscription_config.get('view_online_link', '#VIEW_ONLINE_LINK')
         
         html_parts.append(
             f'<a href="{unsubscribe_link}" target="_blank" style="color: {footer_color}; text-decoration: underline;">Unsubscribe</a>'
@@ -521,13 +523,20 @@ def render_sidebar() -> Dict:
             help="Choose the primary text color for your newsletter"
         )
         
+        include_subscription = st.checkbox(
+            "Include Subscription Section",
+            value=False,
+            help="Include subscription/unsubscribe section in the newsletter"
+        )
+        
         return {
             'email_subject': email_subject,
             'num_layers': int(num_layers),
             'max_width': int(max_width),
             'font_family': font_family,
             'background_color': background_color,
-            'text_color': text_color
+            'text_color': text_color,
+            'include_subscription': include_subscription
         }
 
 
@@ -652,14 +661,14 @@ def render_header_config(email_subject: str) -> Dict:
     }
 
 
-def render_footer_config() -> Dict:
+def render_subscription_config() -> Dict:
     """
-    Render footer configuration form in the main area.
+    Render subscription configuration form in the main area.
     
     Returns:
-        Dictionary with footer configuration
+        Dictionary with subscription configuration
     """
-    st.header("📄 Footer Configuration")
+    st.header("📄 Subscription Configuration")
     
     col1, col2 = st.columns(2)
     
@@ -996,9 +1005,11 @@ def main():
         layers.append(layer_data)
         st.divider()
     
-    # Footer Configuration (in main area)
-    footer_config = render_footer_config()
-    st.divider()
+    # Subscription Configuration (in main area) - only show if enabled
+    subscription_config = None
+    if config.get('include_subscription', True):
+        subscription_config = render_subscription_config()
+        st.divider()
     
     # Generate Newsletter button
     if st.button("🚀 Generate Newsletter", type="primary", use_container_width=True):
@@ -1009,7 +1020,7 @@ def main():
             text_color=config['text_color'],
             header_config=header_config,
             layers=layers,
-            footer_config=footer_config,
+            subscription_config=subscription_config,
             max_width=config['max_width'],
             font_family=config['font_family']
         )
