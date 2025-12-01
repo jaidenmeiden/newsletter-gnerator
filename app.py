@@ -194,13 +194,11 @@ class NewsletterGenerator:
         subtitle_font_size = layer.get('subtitle_font_size', 15)
         subtitle2_font_size = layer.get('subtitle2_font_size', 13)
         
-        title_bold = layer.get('title_bold', True)
         subtitle_bold = layer.get('subtitle_bold', True)
         subtitle2_bold = layer.get('subtitle2_bold', False)
         
         content_font_size = layer.get('content_font_size', 13)
         content_color = layer.get('content_color', '#000000')
-        content_bold = layer.get('content_bold', False)
         
         # Layer container with padding
         html_parts.append('<tr>')
@@ -226,7 +224,7 @@ class NewsletterGenerator:
                 title, subtitle, subtitle2, content,
                 title_color, subtitle_color, subtitle2_color, content_color,
                 title_font_size, subtitle_font_size, subtitle2_font_size, content_font_size,
-                title_bold, subtitle_bold, subtitle2_bold, content_bold
+                subtitle_bold, subtitle2_bold
             ))
             html_parts.append('</td>')
             
@@ -237,7 +235,7 @@ class NewsletterGenerator:
                 title, subtitle, subtitle2, content,
                 title_color, subtitle_color, subtitle2_color, content_color,
                 title_font_size, subtitle_font_size, subtitle2_font_size, content_font_size,
-                title_bold, subtitle_bold, subtitle2_bold, content_bold
+                subtitle_bold, subtitle2_bold
             ))
             html_parts.append('</td>')
             
@@ -255,7 +253,7 @@ class NewsletterGenerator:
                 title, subtitle, subtitle2, content,
                 title_color, subtitle_color, subtitle2_color, content_color,
                 title_font_size, subtitle_font_size, subtitle2_font_size, content_font_size,
-                title_bold, subtitle_bold, subtitle2_bold, content_bold
+                subtitle_bold, subtitle2_bold
             ))
             html_parts.append('</td>')
         
@@ -273,21 +271,19 @@ class NewsletterGenerator:
         title: str, subtitle: str, subtitle2: str, content: str,
         title_color: str, subtitle_color: str, subtitle2_color: str, content_color: str,
         title_font_size: int, subtitle_font_size: int, subtitle2_font_size: int, content_font_size: int,
-        title_bold: bool, subtitle_bold: bool, subtitle2_bold: bool, content_bold: bool
+        subtitle_bold: bool, subtitle2_bold: bool
     ) -> List[str]:
         """Generate HTML for layer text content (titles and body)."""
         html_parts = []
         
         # Determine font-weight based on bold setting
-        title_weight = '700' if title_bold else '400'
         subtitle_weight = '600' if subtitle_bold else '400'
         subtitle2_weight = '500' if subtitle2_bold else '400'
-        content_weight = '700' if content_bold else '400'
         
-        # Title (H2)
+        # Title (H2) - always bold by default
         if title:
             html_parts.append(
-                f'<h2 style="color: {title_color}; margin: 0 0 10px 0; font-size: {title_font_size}px; font-weight: {title_weight}; line-height: 1.2;">'
+                f'<h2 style="color: {title_color}; margin: 0 0 10px 0; font-size: {title_font_size}px; font-weight: 700; line-height: 1.2;">'
                 f'{title}</h2>'
             )
         
@@ -313,7 +309,7 @@ class NewsletterGenerator:
                 # Wrap it in a container with base styles (color and font-size)
                 # This allows inline styles (like specific word colors) to override the base
                 html_parts.append(
-                    f'<div style="color: {content_color}; font-size: {content_font_size}px; font-weight: {content_weight}; margin: 0; line-height: 1.5;">'
+                    f'<div style="color: {content_color}; font-size: {content_font_size}px; margin: 0; line-height: 1.5;">'
                 )
                 html_parts.append(content)
                 html_parts.append('</div>')
@@ -321,7 +317,7 @@ class NewsletterGenerator:
                 # Plain text, convert newlines to <br> tags
                 formatted_content = content.replace('\n', '<br>')
                 html_parts.append(
-                    f'<p style="color: {content_color}; margin: 0; font-size: {content_font_size}px; font-weight: {content_weight}; line-height: 1.5;">{formatted_content}</p>'
+                    f'<p style="color: {content_color}; margin: 0; font-size: {content_font_size}px; line-height: 1.5;">{formatted_content}</p>'
                 )
         
         return html_parts
@@ -369,11 +365,9 @@ class NewsletterGenerator:
         
         text_font_size = header_config.get('text_font_size', 16)
         text_color = header_config.get('text_color', '#000000')
-        text_bold = header_config.get('text_bold', False)
         
         # Font weights
         title_weight = '700' if title_bold else '400'
-        text_weight = '700' if text_bold else '400'
         
         # Determine image source
         image_src = None
@@ -421,7 +415,7 @@ class NewsletterGenerator:
                 # Wrap it in a container with base styles (color and font-size)
                 # This allows inline styles (like specific word colors) to override the base
                 html_parts.append(
-                    f'<div style="color: {text_color}; font-size: {text_font_size}px; font-weight: {text_weight}; margin: 0; line-height: 1.5;">'
+                    f'<div style="color: {text_color}; font-size: {text_font_size}px; margin: 0; line-height: 1.5;">'
                 )
                 html_parts.append(header_text)
                 html_parts.append('</div>')
@@ -429,7 +423,7 @@ class NewsletterGenerator:
                 # Plain text, convert newlines to <br> tags
                 formatted_text = header_text.replace('\n', '<br>')
                 html_parts.append(
-                    f'<p style="color: {text_color}; font-size: {text_font_size}px; margin: 0; font-weight: {text_weight}; line-height: 1.5;">{formatted_text}</p>'
+                    f'<p style="color: {text_color}; font-size: {text_font_size}px; margin: 0; line-height: 1.5;">{formatted_text}</p>'
                 )
             
             html_parts.append('</td>')
@@ -849,34 +843,28 @@ def render_header_config(email_subject: str) -> Dict:
         )
     
     # Header Text with styling
-    col_text_1, col_text_2, col_text_3, col_text_4 = st.columns([3, 1, 1, 1])
+    st.markdown("**Header Text**")
+    header_text = st_quill(
+        value="ich freue mich Ihnen unsere neuesten Angebote der beruflichen Fortbildungszentren der Bayerischen Wirtschaft (bfz) gGmbH vorzustellen. Mit unserer Jahrzehnten langen Erfahrung sind wir Ihr erfolgreicher Partner für Beratung, Bildung und Integration für Arbeitnehmer*innen.",
+        placeholder="Enter header text here...",
+        html=True,  # Return HTML content
+        key="header_text",
+        toolbar=[
+            [{'size': ['small', False, 'large', 'huge']}],
+            ['bold', 'italic', 'underline', 'strike'],
+            [{'align': []}],
+            [{'list': 'ordered'}, {'list': 'bullet'}],
+            [{'color': []}, {'background': []}],
+            ['link'],
+            ['clean']
+        ]
+    )
+    
+    # Header Text styling (below editor, like in layers)
+    col_text_1, col_text_2 = st.columns(2)
     with col_text_1:
-        st.markdown("**Header Text**")
-        header_text = st_quill(
-            value="ich freue mich Ihnen unsere neuesten Angebote der beruflichen Fortbildungszentren der Bayerischen Wirtschaft (bfz) gGmbH vorzustellen. Mit unserer Jahrzehnten langen Erfahrung sind wir Ihr erfolgreicher Partner für Beratung, Bildung und Integration für Arbeitnehmer*innen.",
-            placeholder="Enter header text here...",
-            html=True,  # Return HTML content
-            key="header_text",
-            toolbar=[
-                [{'size': ['small', False, 'large', 'huge']}],
-                ['bold', 'italic', 'underline', 'strike'],
-                [{'align': []}],
-                [{'list': 'ordered'}, {'list': 'bullet'}],
-                [{'color': []}, {'background': []}],
-                ['link'],
-                ['clean']
-            ]
-        )
-    with col_text_2:
-        text_color = st.color_picker(
-            "Color",
-            value="#000000",
-            key="header_text_color",
-            help="Color for the header text"
-        )
-    with col_text_3:
         text_font_size = st.number_input(
-            "Size (px)",
+            "Header Text Font Size (px)",
             min_value=10,
             max_value=48,
             value=16,
@@ -884,14 +872,13 @@ def render_header_config(email_subject: str) -> Dict:
             key="header_text_font_size",
             help="Font size for the header text"
         )
-    with col_text_4:
-        text_bold = st.checkbox(
-            "Bold",
-            value=False,
-            key="header_text_bold",
-            help="Make header text bold"
+    with col_text_2:
+        text_color = st.color_picker(
+            "Header Text Color",
+            value="#000000",
+            key="header_text_color",
+            help="Color for the header text"
         )
-    
     return {
         'header_title': header_title,
         'header_text': header_text,
@@ -904,8 +891,7 @@ def render_header_config(email_subject: str) -> Dict:
         'title_color': title_color,
         'title_bold': title_bold,
         'text_font_size': text_font_size,
-        'text_color': text_color,
-        'text_bold': text_bold
+        'text_color': text_color
     }
 
 
@@ -1353,7 +1339,7 @@ def render_layer_form(layer_number: int) -> Dict:
     st.subheader(f"Layer {layer_number}")
     
     # Title 1 with styling
-    col_title1_1, col_title1_2, col_title1_3, col_title1_4 = st.columns([3, 1, 1, 1])
+    col_title1_1, col_title1_2, col_title1_3 = st.columns([3, 1, 1])
     with col_title1_1:
         title = st.text_input(
             f"Title 1 (H2) - Layer {layer_number}",
@@ -1377,13 +1363,6 @@ def render_layer_form(layer_number: int) -> Dict:
             step=1,
             key=f"title_font_size_{layer_number}",
             help="Font size for main title"
-        )
-    with col_title1_4:
-        title_bold = st.checkbox(
-            "Bold",
-            value=True,
-            key=f"title_bold_{layer_number}",
-            help="Make title bold"
         )
     
     # Title 2 with styling
@@ -1471,7 +1450,7 @@ def render_layer_form(layer_number: int) -> Dict:
     )
     
     # Main Content styling
-    col_content1, col_content2, col_content3 = st.columns(3)
+    col_content1, col_content2 = st.columns(2)
     with col_content1:
         content_font_size = st.number_input(
             f"Content Font Size (px) - Layer {layer_number}",
@@ -1488,13 +1467,6 @@ def render_layer_form(layer_number: int) -> Dict:
             value="#000000",
             key=f"content_color_{layer_number}",
             help="Color for main content"
-        )
-    with col_content3:
-        content_bold = st.checkbox(
-            f"Content Bold - Layer {layer_number}",
-            value=False,
-            key=f"content_bold_{layer_number}",
-            help="Make content bold"
         )
     
     st.markdown("**Image Configuration**")
@@ -1579,12 +1551,10 @@ def render_layer_form(layer_number: int) -> Dict:
         'title_font_size': title_font_size,
         'subtitle_font_size': subtitle_font_size,
         'subtitle2_font_size': subtitle2_font_size,
-        'title_bold': title_bold,
         'subtitle_bold': subtitle_bold,
         'subtitle2_bold': subtitle2_bold,
         'content_font_size': content_font_size,
-        'content_color': content_color,
-        'content_bold': content_bold
+        'content_color': content_color
     }
 
 
