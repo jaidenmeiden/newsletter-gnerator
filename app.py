@@ -189,52 +189,87 @@ class NewsletterGenerator:
     def _generate_header_html(subject: str, header_config: Dict) -> List[str]:
         """
         Generates the pre-header (hidden text) and main header section.
+        Structure: Image -> Blank Space -> Title -> Text
         
         Args:
             subject: Email subject line
-            header_config: Dictionary with header_title, header_image_base64, pre_header_text
+            header_config: Dictionary with header configuration including image, title, text, sizes
         """
         html_parts = []
 
-        # 1. Pre-Header Text (Texto oculto para la vista previa del email)
-        pre_header_text = header_config.get('pre_header_text', f'{subject} - Read our latest news!')
-        html_parts.append('<tr>')
-        # Estilos de email para ocultar texto pero hacerlo legible para el pre-header
-        html_parts.append(
-            '<td style="padding: 0; font-size: 0; line-height: 0; display: none !important; '
-            'max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden; mso-hide: all;">'
-        )
-        html_parts.append(
-            f'<span style="font-size: 1px; color: #ffffff; line-height: 1px;">{pre_header_text}</span>'
-        )
-        html_parts.append('</td>')
-        html_parts.append('</tr>')
+        # 1. Pre-Header Text (Texto oculto para la vista previa del email) - Solo si se proporciona
+        pre_header_text = header_config.get('pre_header_text', '').strip()
+        if pre_header_text:  # Solo incluir si el usuario lo completa
+            html_parts.append('<tr>')
+            # Estilos de email para ocultar texto pero hacerlo legible para el pre-header
+            html_parts.append(
+                '<td style="padding: 0; font-size: 0; line-height: 0; display: none !important; '
+                'max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden; mso-hide: all;">'
+            )
+            html_parts.append(
+                f'<span style="font-size: 1px; color: #ffffff; line-height: 1px;">{pre_header_text}</span>'
+            )
+            html_parts.append('</td>')
+            html_parts.append('</tr>')
         
-        # 2. Main Header/Logo Area
-        header_title = header_config.get('header_title', subject)
+        # 2. Main Header Structure
+        header_title = header_config.get('header_title', '').strip()
+        if not header_title:  # Si no hay título, usar el subject como fallback
+            header_title = subject
+        header_text = header_config.get('header_text', '').strip()
         header_image_base64 = header_config.get('header_image_base64')
+        header_image_url = header_config.get('header_image_url')
         header_bg_color = header_config.get('header_bg_color', '#f0f0f0')
+        image_width = header_config.get('image_width', 600)
+        title_font_size = header_config.get('title_font_size', 28)
+        text_font_size = header_config.get('text_font_size', 16)
         
-        html_parts.append('<tr>')
-        html_parts.append(
-            f'<td align="center" style="padding: 20px 20px; background-color: {header_bg_color}; border-bottom: 2px solid #e0e0e0;">'
-        )
-        
-        # Logo/Image if provided
+        # Determine image source
+        image_src = None
         if header_image_base64:
-            html_parts.append(
-                f'<img src="{header_image_base64}" alt="{header_title}" '
-                f'style="max-width: 200px; height: auto; margin-bottom: 10px; display: block;">'
-            )
+            image_src = header_image_base64
+        elif header_image_url:
+            image_src = header_image_url
         
-        # Header Title
-        if header_title:
+        # 2.1. Image Row (if image provided)
+        if image_src:
+            html_parts.append('<tr>')
+            html_parts.append('<td style="padding: 0; margin: 0;">')
             html_parts.append(
-                f'<h1 style="color: #333333; font-size: 28px; margin: 0; font-weight: bold; line-height: 1.3;">{header_title}</h1>'
+                f'<img src="{image_src}" alt="{header_title}" '
+                f'style="width: 100%; max-width: {image_width}px; height: auto; display: block; margin: 0; padding: 0;">'
             )
+            html_parts.append('</td>')
+            html_parts.append('</tr>')
         
+        # 2.2. Blank Space Row
+        html_parts.append('<tr>')
+        html_parts.append(f'<td style="padding: 20px 20px; background-color: {header_bg_color};">')
+        html_parts.append('&nbsp;')  # Blank space
         html_parts.append('</td>')
         html_parts.append('</tr>')
+        
+        # 2.3. Title Row
+        if header_title:
+            html_parts.append('<tr>')
+            html_parts.append(f'<td style="padding: 0 20px 10px 20px; background-color: {header_bg_color};">')
+            html_parts.append(
+                f'<h1 style="color: #333333; font-size: {title_font_size}px; margin: 0; font-weight: bold; line-height: 1.3;">{header_title}</h1>'
+            )
+            html_parts.append('</td>')
+            html_parts.append('</tr>')
+        
+        # 2.4. Header Text Row
+        if header_text:
+            # Convert newlines to <br> tags
+            formatted_text = header_text.replace('\n', '<br>')
+            html_parts.append('<tr>')
+            html_parts.append(f'<td style="padding: 0 20px 20px 20px; background-color: {header_bg_color};">')
+            html_parts.append(
+                f'<p style="color: #333333; font-size: {text_font_size}px; margin: 0; line-height: 1.5;">{formatted_text}</p>'
+            )
+            html_parts.append('</td>')
+            html_parts.append('</tr>')
 
         return html_parts
 
@@ -360,29 +395,61 @@ def render_header_config(email_subject: str) -> Dict:
     """
     st.header("📋 Header Configuration")
     
+    # Image source selection
+    image_source = st.radio(
+        "Image Source",
+        options=["External URL", "Upload Image (Base64)"],
+        key="header_image_source",
+        help="Choose how to provide the header image"
+    )
+    
     col1, col2 = st.columns(2)
     
+    header_image_base64 = None
+    header_image_url = None
+    
     with col1:
+        if image_source == "External URL":
+            header_image_url = st.text_input(
+                "Header Image URL",
+                value="",
+                key="header_image_url",
+                help="Enter the URL of the image from an external server"
+            )
+        else:
+            header_image_file = st.file_uploader(
+                "Header Logo/Image",
+                type=['jpg', 'jpeg', 'png', 'JPG', 'JPEG', 'PNG'],
+                key="header_image",
+                help="Upload a logo or image for the header (optional)"
+            )
+            # Process header image
+            if header_image_file is not None:
+                header_image_base64 = ImageProcessor.convert_to_base64(header_image_file)
+        
         header_title = st.text_input(
             "Header Title",
-            value=email_subject,
+            value="",
+            placeholder="Ejemplo: Sehr geehrte/r Frau/Herr...",
             key="header_title",
             help="The title displayed in the newsletter header"
         )
         
-        header_image_file = st.file_uploader(
-            "Header Logo/Image",
-            type=['jpg', 'jpeg', 'png', 'JPG', 'JPEG', 'PNG'],
-            key="header_image",
-            help="Upload a logo or image for the header (optional)"
+        header_text = st.text_area(
+            "Header Text",
+            value="",
+            key="header_text",
+            help="Text content below the title in the header",
+            height=100
         )
     
     with col2:
         pre_header_text = st.text_input(
-            "Pre-Header Text",
-            value=f"{email_subject} - Read our latest news!",
+            "Pre-Header Text (Opcional)",
+            value="",
+            placeholder="Texto oculto para vista previa de email",
             key="pre_header_text",
-            help="Hidden text shown in email preview (optional)"
+            help="Hidden text shown in email preview (opcional - solo se incluye si se completa)"
         )
         
         header_bg_color = st.color_picker(
@@ -391,17 +458,49 @@ def render_header_config(email_subject: str) -> Dict:
             key="header_bg_color",
             help="Background color for the header section"
         )
-    
-    # Process header image
-    header_image_base64 = None
-    if header_image_file is not None:
-        header_image_base64 = ImageProcessor.convert_to_base64(header_image_file)
+        
+        # Image size configuration
+        image_width = st.number_input(
+            "Image Width (px)",
+            min_value=50,
+            max_value=800,
+            value=600,
+            step=10,
+            key="header_image_width",
+            help="Width of the header image in pixels"
+        )
+        
+        # Font sizes
+        title_font_size = st.number_input(
+            "Title Font Size (px)",
+            min_value=10,
+            max_value=72,
+            value=28,
+            step=1,
+            key="header_title_font_size",
+            help="Font size for the header title"
+        )
+        
+        text_font_size = st.number_input(
+            "Header Text Font Size (px)",
+            min_value=10,
+            max_value=48,
+            value=16,
+            step=1,
+            key="header_text_font_size",
+            help="Font size for the header text"
+        )
     
     return {
         'header_title': header_title,
+        'header_text': header_text,
         'header_image_base64': header_image_base64,
+        'header_image_url': header_image_url,
         'pre_header_text': pre_header_text,
-        'header_bg_color': header_bg_color
+        'header_bg_color': header_bg_color,
+        'image_width': image_width,
+        'title_font_size': title_font_size,
+        'text_font_size': text_font_size
     }
 
 
