@@ -5,10 +5,85 @@ A web application for generating responsive HTML newsletters with dynamic conten
 
 import base64
 import io
+import json
+import os
 from typing import Dict, List, Optional
 
 import streamlit as st
 from PIL import Image
+
+
+def render_html_editor(key: str, label: str, value: str = "", height: int = 200, help_text: str = "") -> str:
+    """
+    Render a rich text HTML editor using Quill.js.
+    
+    Args:
+        key: Unique key for the editor instance
+        label: Label for the editor
+        value: Initial HTML content
+        height: Editor height in pixels
+        help_text: Help text to display
+        
+    Returns:
+        HTML content from the editor
+    """
+    # Initialize session state for this editor
+    editor_key = f"html_editor_{key}"
+    if editor_key not in st.session_state:
+        st.session_state[editor_key] = value
+    
+    # Read HTML editor component
+    html_path = os.path.join(os.path.dirname(__file__), 'components', 'html_editor.html')
+    try:
+        with open(html_path, 'r', encoding='utf-8') as f:
+            editor_html = f.read()
+    except FileNotFoundError:
+        # Try relative path as fallback
+        try:
+            with open('components/html_editor.html', 'r', encoding='utf-8') as f:
+                editor_html = f.read()
+        except FileNotFoundError:
+            st.error("HTML editor component not found. Please ensure components/html_editor.html exists.")
+            return st.session_state.get(editor_key, value)
+    
+    # Escape value for HTML
+    escaped_value = value.replace('"', '&quot;').replace("'", "&#39;")
+    
+    # Replace placeholders in HTML
+    editor_html = editor_html.replace('{{ELEMENT_ID}}', key)
+    editor_html = editor_html.replace('{{INITIAL_VALUE}}', escaped_value)
+    editor_html = editor_html.replace('height: 200px;', f'height: {height}px;')
+    editor_html = editor_html.replace('min-height: 150px;', f'min-height: {max(height - 50, 100)}px;')
+    
+    # Display label and help
+    if label:
+        st.markdown(f"**{label}**")
+    if help_text:
+        st.caption(help_text)
+    
+    # Render the editor
+    # Note: st.components.v1.html() doesn't accept 'key' parameter
+    st.components.v1.html(
+        editor_html, 
+        height=height + 150
+    )
+    
+    # Use a text area to capture/edit HTML content
+    # The editor updates this via JavaScript, but user can also edit directly
+    current_value = st.session_state.get(editor_key, value)
+    
+    html_content = st.text_area(
+        f"{label} (HTML Source - Edit here or use editor above)",
+        value=current_value,
+        key=f"{key}_html",
+        help=f"HTML content. Edit directly or use the rich text editor above. {help_text}",
+        height=min(height, 150)
+    )
+    
+    # Update session state
+    st.session_state[editor_key] = html_content
+    
+    return html_content
 
 
 class ImageProcessor:
@@ -824,12 +899,12 @@ def render_header_config(email_subject: str) -> Dict:
     # Header Text with styling
     col_text_1, col_text_2, col_text_3, col_text_4 = st.columns([3, 1, 1, 1])
     with col_text_1:
-        header_text = st.text_area(
-            "Header Text",
-            value="ich freue mich Ihnen unsere neuesten Angebote der beruflichen Fortbildungszentren der Bayerischen Wirtschaft (bfz) gGmbH vorzustellen. Mit unserer Jahrzehnten langen Erfahrung sind wir Ihr erfolgreicher Partner für Beratung, Bildung und Integration für Arbeitnehmer*innen.",
+        header_text = render_html_editor(
             key="header_text",
-            help="Text content below the title in the header",
-            height=100
+            label="Header Text",
+            value="ich freue mich Ihnen unsere neuesten Angebote der beruflichen Fortbildungszentren der Bayerischen Wirtschaft (bfz) gGmbH vorzustellen. Mit unserer Jahrzehnten langen Erfahrung sind wir Ihr erfolgreicher Partner für Beratung, Bildung und Integration für Arbeitnehmer*innen.",
+            height=150,
+            help_text="Rich text editor for header content. Use the toolbar to format text, or edit HTML directly below."
         )
     with col_text_2:
         text_color = st.color_picker(
@@ -1418,12 +1493,12 @@ def render_layer_form(layer_number: int) -> Dict:
             help="Make third title bold"
         )
     
-    content = st.text_area(
-        f"Main Content - Layer {layer_number}",
+    content = render_html_editor(
         key=f"content_{layer_number}",
+        label=f"Main Content - Layer {layer_number}",
         value="Ist ein individuell kombinierbares Angebot für Menschen, denen ohne Unterstützung der Einstieg in den deutschen Arbeitsmarkt nicht gelingt. Diese Maßnahme basiert auf dem Zertifikat: 2025M100864-10001.",
-        placeholder="Enter the main content for this layer...",
-        height=150
+        height=200,
+        help_text="Rich text editor for main content. Use the toolbar to format text, or edit HTML directly below."
     )
     
     # Main Content styling
