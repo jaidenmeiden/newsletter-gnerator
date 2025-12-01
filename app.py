@@ -197,7 +197,7 @@ class NewsletterGenerator:
         html_parts.append(f'<td style="padding: {padding}px 20px;">')
         
         # Create table for image and text layout
-        html_parts.append('<table role="presentation" style="width: 100%; border-collapse: collapse; table-layout: auto;">')
+        html_parts.append('<table role="presentation" style="width: 100%; border-collapse: collapse;">')
         html_parts.append('<tr>')
         
         # Image on left or right
@@ -221,8 +221,8 @@ class NewsletterGenerator:
             html_parts.append('</td>')
             
         elif image_src and image_src.strip() and image_alignment == 'right':
-            # Text column (left)
-            html_parts.append('<td style="vertical-align: top; width: 100%;">')
+            # Text column (left) - use auto width to allow proper layout
+            html_parts.append('<td style="vertical-align: top; padding-right: 20px;">')
             html_parts.extend(NewsletterGenerator._generate_layer_text(
                 title, subtitle, subtitle2, content,
                 title_color, subtitle_color, subtitle2_color, content_color,
@@ -232,7 +232,7 @@ class NewsletterGenerator:
             html_parts.append('</td>')
             
             # Image column (right) - transparent background to preserve PNG transparency
-            html_parts.append(f'<td style="vertical-align: top; padding-left: 20px; width: {image_width}px; background-color: transparent;">')
+            html_parts.append(f'<td style="vertical-align: top; width: {image_width}px; background-color: transparent;">')
             html_parts.append(
                 f'<img src="{image_src}" alt="{title or "Layer Image"}" '
                 f'width="{image_width}" style="width: {image_width}px; max-width: 100%; height: auto; display: block; border: 0; outline: none; background-color: transparent;">'
