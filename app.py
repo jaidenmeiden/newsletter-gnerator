@@ -76,6 +76,7 @@ class NewsletterGenerator:
         text_color: str,
         header_config: Dict,
         layers: List[Dict],
+        footer_config: Dict,
         subscription_config: Dict = None,
         max_width: int = 1000,
         font_family: str = "Oswald, sans-serif"
@@ -89,6 +90,7 @@ class NewsletterGenerator:
             text_color: Primary text color hex code
             header_config: Dictionary with header configuration
             layers: List of layer dictionaries containing content data
+            footer_config: Dictionary with footer configuration
             subscription_config: Dictionary with subscription configuration (optional)
             max_width: Maximum width of the newsletter in pixels
             font_family: Font family for the newsletter text
@@ -114,8 +116,8 @@ class NewsletterGenerator:
         
         html_parts.extend([
             '</head>',
-            f'<body style="margin: 0; padding: 0; font-family: {font_family}; background-color: #f4f4f4;">',
-            '<table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f4f4f4;">',
+            f'<body style="margin: 0; padding: 0; font-family: {font_family}; background-color: #FFFFFF;">',
+            '<table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #FFFFFF;">',
             '<tr>',
             '<td align="center" style="padding: 20px 0;">',
             f'<table role="presentation" style="width: {max_width}px; max-width: 100%; border-collapse: collapse; '
@@ -128,6 +130,9 @@ class NewsletterGenerator:
         for layer in layers:
             html_parts.extend(NewsletterGenerator._generate_layer_html(layer, text_color))
 
+        # Add footer section
+        html_parts.extend(NewsletterGenerator._generate_footer_html(footer_config))
+        
         # Add subscription section if configured
         if subscription_config:
             html_parts.extend(NewsletterGenerator._generate_subscription_html(subscription_config))
@@ -396,6 +401,107 @@ class NewsletterGenerator:
         return html_parts
 
     @staticmethod
+    def _generate_footer_html(footer_config: Dict) -> List[str]:
+        """
+        Generates the footer section with company info, image, and social media links.
+        Similar structure to header but for footer.
+        
+        Args:
+            footer_config: Dictionary with footer configuration including image, company info, social media
+        """
+        html_parts = []
+        
+        footer_bg_color = footer_config.get('footer_bg_color', '#ffffff')
+        footer_image_base64 = footer_config.get('footer_image_base64')
+        footer_image_url = footer_config.get('footer_image_url')
+        image_width = footer_config.get('image_width', 600)
+        image_alignment = footer_config.get('image_alignment', 'center').lower()
+        company_name = footer_config.get('company_name', '')
+        address = footer_config.get('address', '')
+        directors = footer_config.get('directors', '')
+        
+        # Determine image source
+        image_src = None
+        if footer_image_base64:
+            image_src = footer_image_base64
+        elif footer_image_url:
+            image_src = footer_image_url
+        
+        # Alignment styles
+        align_style = {
+            'left': 'text-align: left;',
+            'center': 'text-align: center;',
+            'right': 'text-align: right;'
+        }.get(image_alignment, 'text-align: center;')
+        
+        # Footer container
+        html_parts.append('<tr>')
+        html_parts.append(f'<td style="padding: 30px 20px; background-color: {footer_bg_color};">')
+        
+        # Image section (if provided)
+        if image_src:
+            html_parts.append('<div style="margin-bottom: 20px;">')
+            html_parts.append(f'<div style="{align_style}">')
+            html_parts.append(
+                f'<img src="{image_src}" alt="{company_name or "Footer Image"}" '
+                f'width="{image_width}" style="width: {image_width}px; max-width: 100%; height: auto; display: inline-block; border: 0; outline: none; background-color: transparent;">'
+            )
+            html_parts.append('</div>')
+            html_parts.append('</div>')
+        
+        # Company information
+        if company_name or address or directors:
+            html_parts.append('<div style="margin-bottom: 15px;">')
+            
+            if company_name:
+                html_parts.append(
+                    f'<p style="color: #000000; margin: 0 0 10px 0; font-size: 14px; line-height: 1.5;">{company_name}</p>'
+                )
+            
+            if address:
+                formatted_address = address.replace('\n', '<br>')
+                html_parts.append(
+                    f'<p style="color: #000000; margin: 0 0 10px 0; font-size: 12px; line-height: 1.5;">{formatted_address}</p>'
+                )
+            
+            if directors:
+                formatted_directors = directors.replace('\n', '<br>')
+                html_parts.append(
+                    f'<p style="color: #000000; margin: 0 0 15px 0; font-size: 12px; line-height: 1.5;">{formatted_directors}</p>'
+                )
+            
+            html_parts.append('</div>')
+        
+        # Social media links
+        facebook_url = footer_config.get('facebook_url', '')
+        linkedin_url = footer_config.get('linkedin_url', '')
+        twitter_url = footer_config.get('twitter_url', '')
+        instagram_url = footer_config.get('instagram_url', '')
+        
+        social_links = []
+        if facebook_url:
+            social_links.append(f'<a href="{facebook_url}" target="_blank" style="color: #999999; text-decoration: none; margin: 0 10px; display: inline-block;">Facebook</a>')
+        if linkedin_url:
+            social_links.append(f'<a href="{linkedin_url}" target="_blank" style="color: #999999; text-decoration: none; margin: 0 10px; display: inline-block;">LinkedIn</a>')
+        if twitter_url:
+            social_links.append(f'<a href="{twitter_url}" target="_blank" style="color: #999999; text-decoration: none; margin: 0 10px; display: inline-block;">X</a>')
+        if instagram_url:
+            social_links.append(f'<a href="{instagram_url}" target="_blank" style="color: #999999; text-decoration: none; margin: 0 10px; display: inline-block;">Instagram</a>')
+        
+        if social_links:
+            html_parts.append('<div style="margin-top: 20px; text-align: center;">')
+            html_parts.append('<p style="color: #999999; margin: 0 0 10px 0; font-size: 11px;">Los canales de redes sociales de bfz gGmbH:</p>')
+            html_parts.append('<div style="text-align: center;">')
+            html_parts.extend(social_links)
+            html_parts.append('</div>')
+            html_parts.append('</div>')
+        
+        html_parts.append('</td>')
+        html_parts.append('</tr>')
+        
+        return html_parts
+    
+    @staticmethod
     def _generate_subscription_html(subscription_config: Dict) -> List[str]:
         """
         Generates the subscription section with company info and unsubscribe link.
@@ -587,7 +693,7 @@ def render_header_config(email_subject: str) -> Dict:
         header_title = st.text_input(
             "Header Title",
             value="Sehr geehrte/r Frau/Herr....",
-            placeholder="Ejemplo: Sehr geehrte/r Frau/Herr...",
+            placeholder="Example: Sehr geehrte/r Frau/Herr...",
             key="header_title",
             help="The title displayed in the newsletter header"
         )
@@ -658,6 +764,145 @@ def render_header_config(email_subject: str) -> Dict:
         'image_width': image_width,
         'title_font_size': title_font_size,
         'text_font_size': text_font_size
+    }
+
+
+def render_footer_config() -> Dict:
+    """
+    Render footer configuration form in the main area.
+    Similar to header but for footer section.
+    
+    Returns:
+        Dictionary with footer configuration
+    """
+    st.header("📄 Footer Configuration")
+    
+    # Image source selection
+    image_source = st.radio(
+        "Image Source",
+        options=["External URL", "Upload Image (Base64)"],
+        key="footer_image_source",
+        help="Choose how to provide the footer image"
+    )
+    
+    col1, col2 = st.columns(2)
+    
+    footer_image_base64 = None
+    footer_image_url = None
+    
+    with col1:
+        if image_source == "External URL":
+            footer_image_url = st.text_input(
+                "Footer Image URL",
+                value="",
+                key="footer_image_url",
+                help="Enter the URL of the image from an external server"
+            )
+        else:
+            footer_image_file = st.file_uploader(
+                "Footer Logo/Image",
+                type=['jpg', 'jpeg', 'png', 'JPG', 'JPEG', 'PNG'],
+                key="footer_image",
+                help="Upload a logo or image for the footer (optional)"
+            )
+            # Process footer image
+            if footer_image_file is not None:
+                footer_image_base64 = ImageProcessor.convert_to_base64(footer_image_file)
+        
+        company_name = st.text_input(
+            "Company Name",
+            value="Berufliche Fortbildungszentren der Bayerischen Wirtschaft (bfz) gemeinnützige GmbH",
+            placeholder="Example: bfz gGmbH",
+            key="footer_company_name",
+            help="Company or organization name"
+        )
+        
+        address = st.text_area(
+            "Company Address",
+            value="Sitz/Registergericht: München, Registernummer: HRB 121447",
+            placeholder="Example: Sitz/Registergericht: München, Registernummer: HRB 121447",
+            key="footer_address",
+            help="Company address and registration information",
+            height=80
+        )
+        
+        directors = st.text_area(
+            "Directors/Responsibles",
+            value="Geschäftsführer: Sandra Stenger, Wolfgang Braun, Jörg Plesch",
+            placeholder="Example: Geschäftsführer: Sandra Stenger, Wolfgang Braun, Jörg Plesch",
+            key="footer_directors",
+            help="Company directors or responsible persons",
+            height=60
+        )
+    
+    with col2:
+        footer_bg_color = st.color_picker(
+            "Footer Background Color",
+            value="#ffffff",
+            key="footer_bg_color",
+            help="Background color for the footer section"
+        )
+        
+        # Image size configuration (smaller than header by default)
+        image_width = st.number_input(
+            "Image Width (px)",
+            min_value=50,
+            max_value=1200,
+            value=600,
+            step=10,
+            key="footer_image_width",
+            help="Width of the footer image in pixels"
+        )
+        
+        # Image alignment
+        image_alignment = st.selectbox(
+            "Image Alignment",
+            options=['Left', 'Center', 'Right'],
+            index=1,
+            key="footer_image_alignment",
+            help="Alignment of the footer image"
+        )
+        
+        # Social media links
+        st.markdown("**Social Media Links**")
+        facebook_url = st.text_input(
+            "Facebook URL",
+            value="",
+            key="footer_facebook",
+            help="Facebook page URL"
+        )
+        linkedin_url = st.text_input(
+            "LinkedIn URL",
+            value="",
+            key="footer_linkedin",
+            help="LinkedIn page URL"
+        )
+        twitter_url = st.text_input(
+            "X (Twitter) URL",
+            value="",
+            key="footer_twitter",
+            help="X (Twitter) page URL"
+        )
+        instagram_url = st.text_input(
+            "Instagram URL",
+            value="",
+            key="footer_instagram",
+            help="Instagram page URL"
+        )
+    
+    return {
+        'footer_image_base64': footer_image_base64,
+        'footer_image_url': footer_image_url,
+        'company_name': company_name,
+        'address': address,
+        'directors': directors,
+        'footer_bg_color': footer_bg_color,
+        'image_width': image_width,
+        'image_alignment': image_alignment,
+        'facebook_url': facebook_url,
+        'linkedin_url': linkedin_url,
+        'twitter_url': twitter_url,
+        'instagram_url': instagram_url
     }
 
 
@@ -1005,6 +1250,10 @@ def main():
         layers.append(layer_data)
         st.divider()
     
+    # Footer Configuration (in main area)
+    footer_config = render_footer_config()
+    st.divider()
+    
     # Subscription Configuration (in main area) - only show if enabled
     subscription_config = None
     if config.get('include_subscription', True):
@@ -1020,6 +1269,7 @@ def main():
             text_color=config['text_color'],
             header_config=header_config,
             layers=layers,
+            footer_config=footer_config,
             subscription_config=subscription_config,
             max_width=config['max_width'],
             font_family=config['font_family']
