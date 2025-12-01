@@ -65,7 +65,9 @@ class NewsletterGenerator:
         text_color: str,
         header_config: Dict,
         layers: List[Dict],
-        footer_config: Dict
+        footer_config: Dict,
+        max_width: int = 1000,
+        font_family: str = "Arial, sans-serif"
     ) -> str:
         """
         Generate complete HTML newsletter with inline CSS.
@@ -77,6 +79,8 @@ class NewsletterGenerator:
             header_config: Dictionary with header configuration
             layers: List of layer dictionaries containing content data
             footer_config: Dictionary with footer configuration
+            max_width: Maximum width of the newsletter in pixels
+            font_family: Font family for the newsletter text
             
         Returns:
             Complete HTML string ready for email
@@ -89,11 +93,11 @@ class NewsletterGenerator:
             f'<meta name="viewport" content="width=device-width, initial-scale=1.0">',
             f'<title>{subject}</title>',
             '</head>',
-            '<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">',
+            f'<body style="margin: 0; padding: 0; font-family: {font_family}; background-color: #f4f4f4;">',
             '<table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f4f4f4;">',
             '<tr>',
             '<td align="center" style="padding: 20px 0;">',
-            '<table role="presentation" style="width: 600px; max-width: 100%; border-collapse: collapse; '
+            f'<table role="presentation" style="width: {max_width}px; max-width: 100%; border-collapse: collapse; '
             f'background-color: {background_color}; margin: 0 auto;">',
         ]
 
@@ -362,6 +366,31 @@ def render_sidebar() -> Dict:
             help="Select the number of content sections (layers) in your newsletter"
         )
         
+        max_width = st.number_input(
+            "Maximum Newsletter Width (px)",
+            min_value=300,
+            max_value=1200,
+            value=1000,
+            step=10,
+            help="Maximum width of the newsletter in pixels"
+        )
+        
+        font_family = st.selectbox(
+            "Font Family",
+            options=[
+                "Arial, sans-serif",
+                "Helvetica, sans-serif",
+                "Georgia, serif",
+                "Times New Roman, serif",
+                "Verdana, sans-serif",
+                "Courier New, monospace",
+                "Trebuchet MS, sans-serif",
+                "Comic Sans MS, cursive"
+            ],
+            index=0,
+            help="Font family for the newsletter text"
+        )
+        
         st.subheader("Color Settings")
         background_color = st.color_picker(
             "Background Color",
@@ -378,6 +407,8 @@ def render_sidebar() -> Dict:
         return {
             'email_subject': email_subject,
             'num_layers': int(num_layers),
+            'max_width': int(max_width),
+            'font_family': font_family,
             'background_color': background_color,
             'text_color': text_color
         }
@@ -691,7 +722,9 @@ def main():
             text_color=config['text_color'],
             header_config=header_config,
             layers=layers,
-            footer_config=footer_config
+            footer_config=footer_config,
+            max_width=config['max_width'],
+            font_family=config['font_family']
         )
         
         # Store in session state for download
