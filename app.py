@@ -415,10 +415,22 @@ class NewsletterGenerator:
         footer_image_base64 = footer_config.get('footer_image_base64')
         footer_image_url = footer_config.get('footer_image_url')
         image_width = footer_config.get('image_width', 600)
-        image_alignment = footer_config.get('image_alignment', 'center').lower()
+        footer_alignment = footer_config.get('footer_alignment', 'left').lower()
+        
         company_name = footer_config.get('company_name', '')
+        company_name_color = footer_config.get('company_name_color', '#000000')
+        company_name_size = footer_config.get('company_name_size', 14)
+        company_name_bold = footer_config.get('company_name_bold', False)
+        
         address = footer_config.get('address', '')
+        address_color = footer_config.get('address_color', '#000000')
+        address_size = footer_config.get('address_size', 12)
+        address_bold = footer_config.get('address_bold', False)
+        
         directors = footer_config.get('directors', '')
+        directors_color = footer_config.get('directors_color', '#000000')
+        directors_size = footer_config.get('directors_size', 12)
+        directors_bold = footer_config.get('directors_bold', False)
         
         # Determine image source
         image_src = None
@@ -427,26 +439,29 @@ class NewsletterGenerator:
         elif footer_image_url:
             image_src = footer_image_url
         
-        # Alignment styles
+        # Alignment styles for entire footer
         align_style = {
             'left': 'text-align: left;',
             'center': 'text-align: center;',
             'right': 'text-align: right;'
-        }.get(image_alignment, 'text-align: center;')
+        }.get(footer_alignment, 'text-align: left;')
         
-        # Footer container
+        # Font weights
+        company_name_weight = '700' if company_name_bold else '400'
+        address_weight = '700' if address_bold else '400'
+        directors_weight = '700' if directors_bold else '400'
+        
+        # Footer container with alignment
         html_parts.append('<tr>')
-        html_parts.append(f'<td style="padding: 30px 20px; background-color: {footer_bg_color};">')
+        html_parts.append(f'<td style="padding: 30px 20px; background-color: {footer_bg_color}; {align_style}">')
         
         # Image section (if provided)
         if image_src:
             html_parts.append('<div style="margin-bottom: 20px;">')
-            html_parts.append(f'<div style="{align_style}">')
             html_parts.append(
                 f'<img src="{image_src}" alt="{company_name or "Footer Image"}" '
                 f'width="{image_width}" style="width: {image_width}px; max-width: 100%; height: auto; display: inline-block; border: 0; outline: none; background-color: transparent;">'
             )
-            html_parts.append('</div>')
             html_parts.append('</div>')
         
         # Company information
@@ -455,43 +470,76 @@ class NewsletterGenerator:
             
             if company_name:
                 html_parts.append(
-                    f'<p style="color: #000000; margin: 0 0 10px 0; font-size: 14px; line-height: 1.5;">{company_name}</p>'
+                    f'<p style="color: {company_name_color}; margin: 0 0 10px 0; font-size: {company_name_size}px; font-weight: {company_name_weight}; line-height: 1.5;">{company_name}</p>'
                 )
             
             if address:
                 formatted_address = address.replace('\n', '<br>')
                 html_parts.append(
-                    f'<p style="color: #000000; margin: 0 0 10px 0; font-size: 12px; line-height: 1.5;">{formatted_address}</p>'
+                    f'<p style="color: {address_color}; margin: 0 0 10px 0; font-size: {address_size}px; font-weight: {address_weight}; line-height: 1.5;">{formatted_address}</p>'
                 )
             
             if directors:
                 formatted_directors = directors.replace('\n', '<br>')
                 html_parts.append(
-                    f'<p style="color: #000000; margin: 0 0 15px 0; font-size: 12px; line-height: 1.5;">{formatted_directors}</p>'
+                    f'<p style="color: {directors_color}; margin: 0 0 15px 0; font-size: {directors_size}px; font-weight: {directors_weight}; line-height: 1.5;">{formatted_directors}</p>'
                 )
             
             html_parts.append('</div>')
         
         # Social media links
+        social_media_type = footer_config.get('social_media_type', 'URLs Only')
+        social_image_width = footer_config.get('social_image_width', 30)
+        
         facebook_url = footer_config.get('facebook_url', '')
+        facebook_image_base64 = footer_config.get('facebook_image_base64')
         linkedin_url = footer_config.get('linkedin_url', '')
+        linkedin_image_base64 = footer_config.get('linkedin_image_base64')
         twitter_url = footer_config.get('twitter_url', '')
+        twitter_image_base64 = footer_config.get('twitter_image_base64')
         instagram_url = footer_config.get('instagram_url', '')
+        instagram_image_base64 = footer_config.get('instagram_image_base64')
         
         social_links = []
-        if facebook_url:
-            social_links.append(f'<a href="{facebook_url}" target="_blank" style="color: #999999; text-decoration: none; margin: 0 10px; display: inline-block;">Facebook</a>')
-        if linkedin_url:
-            social_links.append(f'<a href="{linkedin_url}" target="_blank" style="color: #999999; text-decoration: none; margin: 0 10px; display: inline-block;">LinkedIn</a>')
-        if twitter_url:
-            social_links.append(f'<a href="{twitter_url}" target="_blank" style="color: #999999; text-decoration: none; margin: 0 10px; display: inline-block;">X</a>')
-        if instagram_url:
-            social_links.append(f'<a href="{instagram_url}" target="_blank" style="color: #999999; text-decoration: none; margin: 0 10px; display: inline-block;">Instagram</a>')
+        if social_media_type == "Images":
+            if facebook_url and facebook_image_base64:
+                social_links.append(
+                    f'<a href="{facebook_url}" target="_blank" style="margin: 0 10px; display: inline-block;">'
+                    f'<img src="{facebook_image_base64}" alt="Facebook" width="{social_image_width}" '
+                    f'style="width: {social_image_width}px; height: auto; border: 0; outline: none;"></a>'
+                )
+            if linkedin_url and linkedin_image_base64:
+                social_links.append(
+                    f'<a href="{linkedin_url}" target="_blank" style="margin: 0 10px; display: inline-block;">'
+                    f'<img src="{linkedin_image_base64}" alt="LinkedIn" width="{social_image_width}" '
+                    f'style="width: {social_image_width}px; height: auto; border: 0; outline: none;"></a>'
+                )
+            if twitter_url and twitter_image_base64:
+                social_links.append(
+                    f'<a href="{twitter_url}" target="_blank" style="margin: 0 10px; display: inline-block;">'
+                    f'<img src="{twitter_image_base64}" alt="X" width="{social_image_width}" '
+                    f'style="width: {social_image_width}px; height: auto; border: 0; outline: none;"></a>'
+                )
+            if instagram_url and instagram_image_base64:
+                social_links.append(
+                    f'<a href="{instagram_url}" target="_blank" style="margin: 0 10px; display: inline-block;">'
+                    f'<img src="{instagram_image_base64}" alt="Instagram" width="{social_image_width}" '
+                    f'style="width: {social_image_width}px; height: auto; border: 0; outline: none;"></a>'
+                )
+        else:
+            if facebook_url:
+                social_links.append(f'<a href="{facebook_url}" target="_blank" style="color: #999999; text-decoration: none; margin: 0 10px; display: inline-block;">Facebook</a>')
+            if linkedin_url:
+                social_links.append(f'<a href="{linkedin_url}" target="_blank" style="color: #999999; text-decoration: none; margin: 0 10px; display: inline-block;">LinkedIn</a>')
+            if twitter_url:
+                social_links.append(f'<a href="{twitter_url}" target="_blank" style="color: #999999; text-decoration: none; margin: 0 10px; display: inline-block;">X</a>')
+            if instagram_url:
+                social_links.append(f'<a href="{instagram_url}" target="_blank" style="color: #999999; text-decoration: none; margin: 0 10px; display: inline-block;">Instagram</a>')
         
         if social_links:
-            html_parts.append('<div style="margin-top: 20px; text-align: center;">')
+            html_parts.append('<div style="margin-top: 20px;">')
             html_parts.append('<p style="color: #999999; margin: 0 0 10px 0; font-size: 11px;">Los canales de redes sociales de bfz gGmbH:</p>')
-            html_parts.append('<div style="text-align: center;">')
+            html_parts.append('<div>')
             html_parts.extend(social_links)
             html_parts.append('</div>')
             html_parts.append('</div>')
@@ -777,7 +825,25 @@ def render_footer_config() -> Dict:
     """
     st.header("📄 Footer Configuration")
     
-    # Image source selection
+    # First row: Footer alignment | Footer Background Color
+    col_row1_1, col_row1_2 = st.columns(2)
+    with col_row1_1:
+        footer_alignment = st.selectbox(
+            "Footer Alignment",
+            options=['Left', 'Center', 'Right'],
+            index=1,
+            key="footer_alignment",
+            help="Alignment of the entire footer content (image and text)"
+        )
+    with col_row1_2:
+        footer_bg_color = st.color_picker(
+            "Footer Background Color",
+            value="#ffffff",
+            key="footer_bg_color",
+            help="Background color for the footer section"
+        )
+    
+    # Second row: Image Source (full width)
     image_source = st.radio(
         "Image Source",
         options=["External URL", "Upload Image (Base64)"],
@@ -785,12 +851,12 @@ def render_footer_config() -> Dict:
         help="Choose how to provide the footer image"
     )
     
-    col1, col2 = st.columns(2)
-    
+    # Second row: Footer Image URL | Image Width (px)
+    col_row2_1, col_row2_2 = st.columns(2)
     footer_image_base64 = None
     footer_image_url = None
     
-    with col1:
+    with col_row2_1:
         if image_source == "External URL":
             footer_image_url = st.text_input(
                 "Footer Image URL",
@@ -808,42 +874,8 @@ def render_footer_config() -> Dict:
             # Process footer image
             if footer_image_file is not None:
                 footer_image_base64 = ImageProcessor.convert_to_base64(footer_image_file)
-        
-        company_name = st.text_input(
-            "Company Name",
-            value="Berufliche Fortbildungszentren der Bayerischen Wirtschaft (bfz) gemeinnützige GmbH",
-            placeholder="Example: bfz gGmbH",
-            key="footer_company_name",
-            help="Company or organization name"
-        )
-        
-        address = st.text_area(
-            "Company Address",
-            value="Sitz/Registergericht: München, Registernummer: HRB 121447",
-            placeholder="Example: Sitz/Registergericht: München, Registernummer: HRB 121447",
-            key="footer_address",
-            help="Company address and registration information",
-            height=80
-        )
-        
-        directors = st.text_area(
-            "Directors/Responsibles",
-            value="Geschäftsführer: Sandra Stenger, Wolfgang Braun, Jörg Plesch",
-            placeholder="Example: Geschäftsführer: Sandra Stenger, Wolfgang Braun, Jörg Plesch",
-            key="footer_directors",
-            help="Company directors or responsible persons",
-            height=60
-        )
     
-    with col2:
-        footer_bg_color = st.color_picker(
-            "Footer Background Color",
-            value="#ffffff",
-            key="footer_bg_color",
-            help="Background color for the footer section"
-        )
-        
-        # Image size configuration (smaller than header by default)
+    with col_row2_2:
         image_width = st.number_input(
             "Image Width (px)",
             min_value=50,
@@ -853,42 +885,218 @@ def render_footer_config() -> Dict:
             key="footer_image_width",
             help="Width of the footer image in pixels"
         )
-        
-        # Image alignment
-        image_alignment = st.selectbox(
-            "Image Alignment",
-            options=['Left', 'Center', 'Right'],
-            index=1,
-            key="footer_image_alignment",
-            help="Alignment of the footer image"
+    
+    # Third row: Company Name with styling
+    col_cn_1, col_cn_2, col_cn_3, col_cn_4 = st.columns([3, 1, 1, 1])
+    with col_cn_1:
+        company_name = st.text_input(
+            "Company Name",
+            value="Berufliche Fortbildungszentren der Bayerischen Wirtschaft (bfz) gemeinnützige GmbH",
+            placeholder="Example: bfz gGmbH",
+            key="footer_company_name",
+            help="Company or organization name"
         )
-        
-        # Social media links
-        st.markdown("**Social Media Links**")
+    with col_cn_2:
+        company_name_color = st.color_picker(
+            "Color",
+            value="#000000",
+            key="footer_company_name_color",
+            help="Color for company name"
+        )
+    with col_cn_3:
+        company_name_size = st.number_input(
+            "Size (px)",
+            min_value=8,
+            max_value=48,
+            value=14,
+            step=1,
+            key="footer_company_name_size",
+            help="Font size for company name"
+        )
+    with col_cn_4:
+        company_name_bold = st.checkbox(
+            "Bold",
+            value=False,
+            key="footer_company_name_bold",
+            help="Make company name bold"
+        )
+    
+    # Fourth row: Address with styling
+    col_addr_1, col_addr_2, col_addr_3, col_addr_4 = st.columns([3, 1, 1, 1])
+    with col_addr_1:
+        address = st.text_area(
+            "Company Address",
+            value="Sitz/Registergericht: München, Registernummer: HRB 121447",
+            placeholder="Example: Sitz/Registergericht: München, Registernummer: HRB 121447",
+            key="footer_address",
+            help="Company address and registration information",
+            height=80
+        )
+    with col_addr_2:
+        address_color = st.color_picker(
+            "Color",
+            value="#000000",
+            key="footer_address_color",
+            help="Color for address"
+        )
+    with col_addr_3:
+        address_size = st.number_input(
+            "Size (px)",
+            min_value=8,
+            max_value=48,
+            value=12,
+            step=1,
+            key="footer_address_size",
+            help="Font size for address"
+        )
+    with col_addr_4:
+        address_bold = st.checkbox(
+            "Bold",
+            value=False,
+            key="footer_address_bold",
+            help="Make address bold"
+        )
+    
+    # Fifth row: Directors with styling
+    col_dir_1, col_dir_2, col_dir_3, col_dir_4 = st.columns([3, 1, 1, 1])
+    with col_dir_1:
+        directors = st.text_area(
+            "Directors/Responsibles",
+            value="Geschäftsführer: Sandra Stenger, Wolfgang Braun, Jörg Plesch",
+            placeholder="Example: Geschäftsführer: Sandra Stenger, Wolfgang Braun, Jörg Plesch",
+            key="footer_directors",
+            help="Company directors or responsible persons",
+            height=60
+        )
+    with col_dir_2:
+        directors_color = st.color_picker(
+            "Color",
+            value="#000000",
+            key="footer_directors_color",
+            help="Color for directors"
+        )
+    with col_dir_3:
+        directors_size = st.number_input(
+            "Size (px)",
+            min_value=8,
+            max_value=48,
+            value=12,
+            step=1,
+            key="footer_directors_size",
+            help="Font size for directors"
+        )
+    with col_dir_4:
+        directors_bold = st.checkbox(
+            "Bold",
+            value=False,
+            key="footer_directors_bold",
+            help="Make directors bold"
+        )
+    
+    # Sixth row: Social Media Links section
+    st.markdown("**Social Media Links**")
+    social_media_type = st.radio(
+        "Social Media Type",
+        options=["URLs Only", "Images"],
+        key="footer_social_type",
+        help="Choose between text links or image icons"
+    )
+    
+    if social_media_type == "Images":
+        social_image_width = st.number_input(
+            "Social Media Icon Width (px)",
+            min_value=20,
+            max_value=100,
+            value=30,
+            step=5,
+            key="footer_social_image_width",
+            help="Width of social media icons"
+        )
+    else:
+        social_image_width = None
+    
+    col_social1, col_social2 = st.columns(2)
+    with col_social1:
         facebook_url = st.text_input(
             "Facebook URL",
             value="",
             key="footer_facebook",
             help="Facebook page URL"
         )
+        if social_media_type == "Images":
+            facebook_image = st.file_uploader(
+                "Facebook Icon",
+                type=['jpg', 'jpeg', 'png', 'JPG', 'JPEG', 'PNG', 'svg', 'SVG'],
+                key="footer_facebook_image",
+                help="Upload Facebook icon image"
+            )
+        else:
+            facebook_image = None
+        
         linkedin_url = st.text_input(
             "LinkedIn URL",
             value="",
             key="footer_linkedin",
             help="LinkedIn page URL"
         )
+        if social_media_type == "Images":
+            linkedin_image = st.file_uploader(
+                "LinkedIn Icon",
+                type=['jpg', 'jpeg', 'png', 'JPG', 'JPEG', 'PNG', 'svg', 'SVG'],
+                key="footer_linkedin_image",
+                help="Upload LinkedIn icon image"
+            )
+        else:
+            linkedin_image = None
+    
+    with col_social2:
         twitter_url = st.text_input(
             "X (Twitter) URL",
             value="",
             key="footer_twitter",
             help="X (Twitter) page URL"
         )
+        if social_media_type == "Images":
+            twitter_image = st.file_uploader(
+                "X (Twitter) Icon",
+                type=['jpg', 'jpeg', 'png', 'JPG', 'JPEG', 'PNG', 'svg', 'SVG'],
+                key="footer_twitter_image",
+                help="Upload X (Twitter) icon image"
+            )
+        else:
+            twitter_image = None
+        
         instagram_url = st.text_input(
             "Instagram URL",
             value="",
             key="footer_instagram",
             help="Instagram page URL"
         )
+        if social_media_type == "Images":
+            instagram_image = st.file_uploader(
+                "Instagram Icon",
+                type=['jpg', 'jpeg', 'png', 'JPG', 'JPEG', 'PNG', 'svg', 'SVG'],
+                key="footer_instagram_image",
+                help="Upload Instagram icon image"
+            )
+        else:
+            instagram_image = None
+    
+    # Process social media images to Base64
+    facebook_image_base64 = None
+    linkedin_image_base64 = None
+    twitter_image_base64 = None
+    instagram_image_base64 = None
+    
+    if social_media_type == "Images":
+        if facebook_image:
+            facebook_image_base64 = ImageProcessor.convert_to_base64(facebook_image)
+        if linkedin_image:
+            linkedin_image_base64 = ImageProcessor.convert_to_base64(linkedin_image)
+        if twitter_image:
+            twitter_image_base64 = ImageProcessor.convert_to_base64(twitter_image)
+        if instagram_image:
+            instagram_image_base64 = ImageProcessor.convert_to_base64(instagram_image)
     
     return {
         'footer_image_base64': footer_image_base64,
@@ -898,11 +1106,26 @@ def render_footer_config() -> Dict:
         'directors': directors,
         'footer_bg_color': footer_bg_color,
         'image_width': image_width,
-        'image_alignment': image_alignment,
+        'footer_alignment': footer_alignment,
+        'company_name_color': company_name_color,
+        'company_name_size': company_name_size,
+        'company_name_bold': company_name_bold,
+        'address_color': address_color,
+        'address_size': address_size,
+        'address_bold': address_bold,
+        'directors_color': directors_color,
+        'directors_size': directors_size,
+        'directors_bold': directors_bold,
+        'social_media_type': social_media_type,
+        'social_image_width': social_image_width if social_media_type == "Images" else None,
         'facebook_url': facebook_url,
+        'facebook_image_base64': facebook_image_base64,
         'linkedin_url': linkedin_url,
+        'linkedin_image_base64': linkedin_image_base64,
         'twitter_url': twitter_url,
-        'instagram_url': instagram_url
+        'twitter_image_base64': twitter_image_base64,
+        'instagram_url': instagram_url,
+        'instagram_image_base64': instagram_image_base64
     }
 
 
