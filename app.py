@@ -514,37 +514,37 @@ class NewsletterGenerator:
         if social_media_type == "Images":
             if facebook_url and facebook_image_base64:
                 social_links.append(
-                    f'<a href="{facebook_url}" target="_blank" style="margin: 0 10px; display: inline-block;">'
+                    f'<a href="{facebook_url}" target="_blank" rel="noopener noreferrer" style="margin: 0 10px; display: inline-block;">'
                     f'<img src="{facebook_image_base64}" alt="Facebook" width="{social_image_width}" '
                     f'style="width: {social_image_width}px; height: auto; border: 0; outline: none;"></a>'
                 )
             if linkedin_url and linkedin_image_base64:
                 social_links.append(
-                    f'<a href="{linkedin_url}" target="_blank" style="margin: 0 10px; display: inline-block;">'
+                    f'<a href="{linkedin_url}" target="_blank" rel="noopener noreferrer" style="margin: 0 10px; display: inline-block;">'
                     f'<img src="{linkedin_image_base64}" alt="LinkedIn" width="{social_image_width}" '
                     f'style="width: {social_image_width}px; height: auto; border: 0; outline: none;"></a>'
                 )
             if xing_url and xing_image_base64:
                 social_links.append(
-                    f'<a href="{xing_url}" target="_blank" style="margin: 0 10px; display: inline-block;">'
-                    f'<img src="{xing_image_base64}" alt="X" width="{social_image_width}" '
+                    f'<a href="{xing_url}" target="_blank" rel="noopener noreferrer" style="margin: 0 10px; display: inline-block;">'
+                    f'<img src="{xing_image_base64}" alt="Xing" width="{social_image_width}" '
                     f'style="width: {social_image_width}px; height: auto; border: 0; outline: none;"></a>'
                 )
             if instagram_url and instagram_image_base64:
                 social_links.append(
-                    f'<a href="{instagram_url}" target="_blank" style="margin: 0 10px; display: inline-block;">'
+                    f'<a href="{instagram_url}" target="_blank" rel="noopener noreferrer" style="margin: 0 10px; display: inline-block;">'
                     f'<img src="{instagram_image_base64}" alt="Instagram" width="{social_image_width}" '
                     f'style="width: {social_image_width}px; height: auto; border: 0; outline: none;"></a>'
                 )
         else:
             if facebook_url:
-                social_links.append(f'<a href="{facebook_url}" target="_blank" style="color: #999999; text-decoration: none; margin: 0 10px; display: inline-block;">Facebook</a>')
+                social_links.append(f'<a href="{facebook_url}" target="_blank" rel="noopener noreferrer" style="color: #999999; text-decoration: none; margin: 0 10px; display: inline-block;">Facebook</a>')
             if linkedin_url:
-                social_links.append(f'<a href="{linkedin_url}" target="_blank" style="color: #999999; text-decoration: none; margin: 0 10px; display: inline-block;">LinkedIn</a>')
+                social_links.append(f'<a href="{linkedin_url}" target="_blank" rel="noopener noreferrer" style="color: #999999; text-decoration: none; margin: 0 10px; display: inline-block;">LinkedIn</a>')
             if xing_url:
-                social_links.append(f'<a href="{xing_url}" target="_blank" style="color: #999999; text-decoration: none; margin: 0 10px; display: inline-block;">X</a>')
+                social_links.append(f'<a href="{xing_url}" target="_blank" rel="noopener noreferrer" style="color: #999999; text-decoration: none; margin: 0 10px; display: inline-block;">Xing</a>')
             if instagram_url:
-                social_links.append(f'<a href="{instagram_url}" target="_blank" style="color: #999999; text-decoration: none; margin: 0 10px; display: inline-block;">Instagram</a>')
+                social_links.append(f'<a href="{instagram_url}" target="_blank" rel="noopener noreferrer" style="color: #999999; text-decoration: none; margin: 0 10px; display: inline-block;">Instagram</a>')
         
         if social_links:
             social_media_label = footer_config.get('social_media_label', 'Die Social-Media-Kanäle der bfz gGmbH:')
