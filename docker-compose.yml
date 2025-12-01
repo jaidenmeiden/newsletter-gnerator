@@ -1,6 +1,15 @@
 version: '3.8'
 
 services:
+  mongo:
+    image: mongo:latest
+    container_name: mongo_container
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    restart: on-failure
+
   newsletter_app:
     # Tell Docker Compose to use the Dockerfile in the current directory to build the image.
     build: .
@@ -15,3 +24,9 @@ services:
     restart: on-failure
     # Name for the container
     container_name: newsletter_generator_container
+    # Ensure MongoDB is started before the newsletter app
+    depends_on:
+      - mongo
+
+volumes:
+  mongo_data:
