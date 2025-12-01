@@ -124,68 +124,136 @@ class NewsletterGenerator:
     @staticmethod
     def _generate_layer_html(layer: Dict, text_color: str) -> List[str]:
         """
-        Generate HTML for a single content layer.
+        Generate HTML for a single content layer with image on left or right.
         
         Args:
-            layer: Dictionary containing layer content (title, subtitle, content, image, alignment)
-            text_color: Primary text color hex code
+            layer: Dictionary containing layer content (title, subtitle, subtitle2, content, image, alignment, etc.)
+            text_color: Primary text color hex code (for content)
             
         Returns:
             List of HTML strings for the layer
         """
         html_parts = []
         
-        # Layer container
+        # Get layer configuration
+        padding = layer.get('padding', 30)
+        image_alignment = layer.get('image_alignment', 'left').lower()
+        image_src = layer.get('image_url') or layer.get('image_base64')
+        image_width = layer.get('image_width', 300)
+        
+        title = layer.get('title', '')
+        subtitle = layer.get('subtitle', '')
+        subtitle2 = layer.get('subtitle2', '')
+        content = layer.get('content', '')
+        
+        title_color = layer.get('title_color', text_color)
+        subtitle_color = layer.get('subtitle_color', '#008000')  # Green by default
+        subtitle2_color = layer.get('subtitle2_color', text_color)
+        
+        title_font_size = layer.get('title_font_size', 26)
+        subtitle_font_size = layer.get('subtitle_font_size', 18)
+        subtitle2_font_size = layer.get('subtitle2_font_size', 16)
+        
+        # Layer container with padding
         html_parts.append('<tr>')
-        html_parts.append('<td style="padding: 30px 20px;">')
+        html_parts.append(f'<td style="padding: {padding}px 20px;">')
         
-        # Image section (if present)
-        if layer.get('image_base64'):
-            alignment = layer.get('image_alignment', 'center').lower()
-            align_style = {
-                'left': 'text-align: left;',
-                'center': 'text-align: center;',
-                'right': 'text-align: right;'
-            }.get(alignment, 'text-align: center;')
+        # Create table for image and text layout
+        html_parts.append('<table role="presentation" style="width: 100%; border-collapse: collapse;">')
+        html_parts.append('<tr>')
+        
+        # Image on left or right
+        if image_src and image_alignment == 'left':
+            # Image column (left)
+            html_parts.append('<td style="vertical-align: top; padding-right: 20px; width: auto;">')
+            html_parts.append(
+                f'<img src="{image_src}" alt="{title}" '
+                f'style="width: {image_width}px; max-width: 100%; height: auto; display: block;">'
+            )
+            html_parts.append('</td>')
             
-            html_parts.append(f'<div style="{align_style} margin-bottom: 20px;">')
+            # Text column (right)
+            html_parts.append('<td style="vertical-align: top; width: 100%;">')
+            html_parts.extend(NewsletterGenerator._generate_layer_text(
+                title, subtitle, subtitle2, content,
+                title_color, subtitle_color, subtitle2_color, text_color,
+                title_font_size, subtitle_font_size, subtitle2_font_size
+            ))
+            html_parts.append('</td>')
+            
+        elif image_src and image_alignment == 'right':
+            # Text column (left)
+            html_parts.append('<td style="vertical-align: top; width: 100%;">')
+            html_parts.extend(NewsletterGenerator._generate_layer_text(
+                title, subtitle, subtitle2, content,
+                title_color, subtitle_color, subtitle2_color, text_color,
+                title_font_size, subtitle_font_size, subtitle2_font_size
+            ))
+            html_parts.append('</td>')
+            
+            # Image column (right)
+            html_parts.append('<td style="vertical-align: top; padding-left: 20px; width: auto;">')
             html_parts.append(
-                f'<img src="{layer["image_base64"]}" '
-                f'alt="{layer.get("title", "Newsletter Image")}" '
-                f'style="max-width: 100%; height: auto; border-radius: 8px;">'
+                f'<img src="{image_src}" alt="{title}" '
+                f'style="width: {image_width}px; max-width: 100%; height: auto; display: block;">'
             )
-            html_parts.append('</div>')
+            html_parts.append('</td>')
+        else:
+            # No image, just text
+            html_parts.append('<td style="vertical-align: top; width: 100%;">')
+            html_parts.extend(NewsletterGenerator._generate_layer_text(
+                title, subtitle, subtitle2, content,
+                title_color, subtitle_color, subtitle2_color, text_color,
+                title_font_size, subtitle_font_size, subtitle2_font_size
+            ))
+            html_parts.append('</td>')
         
-        # Title (H2)
-        if layer.get('title'):
-            html_parts.append(
-                f'<h2 style="color: {text_color}; margin: 0 0 10px 0; font-size: 26px; font-weight: 700; line-height: 1.2;">'
-                f'{layer["title"]}</h2>'
-            )
-        
-        # Subtitle (H3) - Subtítulo (H
-        if layer.get('subtitle'):
-            html_parts.append(
-                f'<h3 style="color: {text_color}; margin: 0 0 15px 0; font-size: 18px; font-weight: 500; line-height: 1.4; opacity: 0.8;">'
-                f'{layer["subtitle"]}</h3>'
-            )
-        
-        # Main content - Contenido principal
-        if layer.get('content'):
-            content = layer['content'].replace('\n', '<br>')
-            html_parts.append(
-                f'<p style="color: {text_color}; margin: 0 0 20px 0; font-size: 16px; line-height: 1.5;">'
-                f'{content}</p>'
-            )
+        html_parts.append('</tr>')
+        html_parts.append('</table>')
         
         # Close layer container
         html_parts.append('</td>')
         html_parts.append('</tr>')
         
-        # Add separator between layers
-        html_parts.append('<tr>')
-        html_parts.append('<td style="border-bottom: 1px solid rgba(0,0,0,0.1); padding: 0 20px;"></td>')
-        html_parts.append('</tr>')
+        return html_parts
+    
+    @staticmethod
+    def _generate_layer_text(
+        title: str, subtitle: str, subtitle2: str, content: str,
+        title_color: str, subtitle_color: str, subtitle2_color: str, text_color: str,
+        title_font_size: int, subtitle_font_size: int, subtitle2_font_size: int
+    ) -> List[str]:
+        """Generate HTML for layer text content (titles and body)."""
+        html_parts = []
+        
+        # Title (H2)
+        if title:
+            html_parts.append(
+                f'<h2 style="color: {title_color}; margin: 0 0 10px 0; font-size: {title_font_size}px; font-weight: 700; line-height: 1.2;">'
+                f'{title}</h2>'
+            )
+        
+        # Subtitle (H3) - Green/accent color
+        if subtitle:
+            html_parts.append(
+                f'<h3 style="color: {subtitle_color}; margin: 0 0 10px 0; font-size: {subtitle_font_size}px; font-weight: 600; line-height: 1.4;">'
+                f'{subtitle}</h3>'
+            )
+        
+        # Subtitle 2 (H4) - Third title
+        if subtitle2:
+            html_parts.append(
+                f'<h4 style="color: {subtitle2_color}; margin: 0 0 15px 0; font-size: {subtitle2_font_size}px; font-weight: 500; line-height: 1.4;">'
+                f'{subtitle2}</h4>'
+            )
+        
+        # Main content
+        if content:
+            formatted_content = content.replace('\n', '<br>')
+            html_parts.append(
+                f'<p style="color: {text_color}; margin: 0; font-size: 16px; line-height: 1.5;">'
+                f'{formatted_content}</p>'
+            )
         
         return html_parts
 
@@ -622,22 +690,85 @@ def render_layer_form(layer_number: int) -> Dict:
     """
     st.subheader(f"Layer {layer_number}")
     
-    col1, col2 = st.columns(2)
-    
-    with col1:
+    # Title 1 with styling
+    col_title1_1, col_title1_2, col_title1_3 = st.columns([3, 1, 1])
+    with col_title1_1:
         title = st.text_input(
-            f"Title (H2) - Layer {layer_number}",
+            f"Title 1 (H2) - Layer {layer_number}",
             key=f"title_{layer_number}",
             value="P.I.A SPEED Einzelcoaching",
-            placeholder="Enter layer title..."
+            placeholder="Enter main title..."
+        )
+    with col_title1_2:
+        title_color = st.color_picker(
+            "Color",
+            value="#333333",
+            key=f"title_color_{layer_number}",
+            help="Color for the main title"
+        )
+    with col_title1_3:
+        title_font_size = st.number_input(
+            "Size (px)",
+            min_value=10,
+            max_value=72,
+            value=26,
+            step=1,
+            key=f"title_font_size_{layer_number}",
+            help="Font size for main title"
         )
     
-    with col2:
+    # Title 2 with styling
+    col_title2_1, col_title2_2, col_title2_3 = st.columns([3, 1, 1])
+    with col_title2_1:
         subtitle = st.text_input(
-            f"Subtitle (H3) - Layer {layer_number}",
+            f"Title 2 (H3) - Layer {layer_number}",
             key=f"subtitle_{layer_number}",
             value="Perspektive. Integration. Arbeit.",
-            placeholder="Enter layer subtitle..."
+            placeholder="Enter subtitle (green)..."
+        )
+    with col_title2_2:
+        subtitle_color = st.color_picker(
+            "Color",
+            value="#008000",
+            key=f"subtitle_color_{layer_number}",
+            help="Color for the second title"
+        )
+    with col_title2_3:
+        subtitle_font_size = st.number_input(
+            "Size (px)",
+            min_value=10,
+            max_value=48,
+            value=18,
+            step=1,
+            key=f"subtitle_font_size_{layer_number}",
+            help="Font size for second title"
+        )
+    
+    # Title 3 with styling
+    col_title3_1, col_title3_2, col_title3_3 = st.columns([3, 1, 1])
+    with col_title3_1:
+        subtitle2 = st.text_input(
+            f"Title 3 (H4) - Layer {layer_number}",
+            key=f"subtitle2_{layer_number}",
+            value="Schnell und sicher im Umgang mit Bewerbungen und E-Service",
+            placeholder="Enter third title..."
+        )
+    with col_title3_2:
+        subtitle2_color = st.color_picker(
+            "Color",
+            value="#333333",
+            key=f"subtitle2_color_{layer_number}",
+            help="Color for the third title"
+        )
+    with col_title3_3:
+        subtitle2_font_size = st.number_input(
+            "Size (px)",
+            min_value=10,
+            max_value=48,
+            value=16,
+            step=1,
+            key=f"subtitle2_font_size_{layer_number}",
+            help="Font size for third title"
         )
     
     content = st.text_area(
@@ -648,35 +779,86 @@ def render_layer_form(layer_number: int) -> Dict:
         height=150
     )
     
-    col3, col4 = st.columns(2)
+    st.markdown("**Image Configuration**")
     
-    with col3:
-        image_file = st.file_uploader(
-            f"Image - Layer {layer_number}",
-            type=['jpg', 'jpeg', 'png', 'JPG', 'JPEG', 'PNG'],
-            key=f"image_{layer_number}",
-            help="Upload an image for this layer (JPG or PNG)"
-        )
+    # Image source selection
+    image_source = st.radio(
+        f"Image Source - Layer {layer_number}",
+        options=["External URL", "Upload Image (Base64)"],
+        key=f"image_source_{layer_number}",
+        help="Choose how to provide the image",
+        index=0  # Default to URL
+    )
     
-    with col4:
-        image_alignment = st.selectbox(
-            f"Image Alignment - Layer {layer_number}",
-            options=['Left', 'Center', 'Right'],
-            index=1,
-            key=f"alignment_{layer_number}"
-        )
+    col_img1, col_img2 = st.columns(2)
     
-    # Process image to Base64
     image_base64 = None
-    if image_file is not None:
-        image_base64 = ImageProcessor.convert_to_base64(image_file)
+    image_url = None
+    
+    with col_img1:
+        if image_source == "External URL":
+            image_url = st.text_input(
+                f"Image URL - Layer {layer_number}",
+                value="",
+                key=f"image_url_{layer_number}",
+                help="Enter the URL of the image from an external server"
+            )
+        else:
+            image_file = st.file_uploader(
+                f"Upload Image - Layer {layer_number}",
+                type=['jpg', 'jpeg', 'png', 'JPG', 'JPEG', 'PNG'],
+                key=f"image_{layer_number}",
+                help="Upload an image for this layer (JPG or PNG)"
+            )
+            # Process image to Base64
+            if image_file is not None:
+                image_base64 = ImageProcessor.convert_to_base64(image_file)
+        
+        image_alignment = st.selectbox(
+            f"Image Position - Layer {layer_number}",
+            options=['Left', 'Right'],
+            index=0,
+            key=f"alignment_{layer_number}",
+            help="Position of image relative to text"
+        )
+    
+    with col_img2:
+        image_width = st.number_input(
+            f"Image Width (px) - Layer {layer_number}",
+            min_value=50,
+            max_value=800,
+            value=300,
+            step=10,
+            key=f"image_width_{layer_number}",
+            help="Width of the image in pixels"
+        )
+        
+        padding = st.number_input(
+            f"Padding (px) - Layer {layer_number}",
+            min_value=0,
+            max_value=100,
+            value=30,
+            step=5,
+            key=f"padding_{layer_number}",
+            help="Vertical padding for this layer"
+        )
     
     return {
         'title': title,
         'subtitle': subtitle,
+        'subtitle2': subtitle2,
         'content': content,
+        'image_url': image_url,
         'image_base64': image_base64,
-        'image_alignment': image_alignment
+        'image_alignment': image_alignment,
+        'image_width': image_width,
+        'padding': padding,
+        'title_color': title_color,
+        'subtitle_color': subtitle_color,
+        'subtitle2_color': subtitle2_color,
+        'title_font_size': title_font_size,
+        'subtitle_font_size': subtitle_font_size,
+        'subtitle2_font_size': subtitle2_font_size
     }
 
 
