@@ -138,7 +138,16 @@ class NewsletterGenerator:
         # Get layer configuration
         padding = layer.get('padding', 30)
         image_alignment = layer.get('image_alignment', 'left').lower()
-        image_src = layer.get('image_url') or layer.get('image_base64')
+        # Get image source - check both URL and Base64, prefer non-empty values
+        image_url = layer.get('image_url')
+        image_base64 = layer.get('image_base64')
+        # Determine which image source to use (URL takes precedence if both exist)
+        if image_url and image_url.strip():
+            image_src = image_url.strip()
+        elif image_base64:
+            image_src = image_base64
+        else:
+            image_src = None
         image_width = layer.get('image_width', 300)
         
         title = layer.get('title', '')
@@ -159,21 +168,21 @@ class NewsletterGenerator:
         html_parts.append(f'<td style="padding: {padding}px 20px;">')
         
         # Create table for image and text layout
-        html_parts.append('<table role="presentation" style="width: 100%; border-collapse: collapse;">')
+        html_parts.append('<table role="presentation" style="width: 100%; border-collapse: collapse; table-layout: auto;">')
         html_parts.append('<tr>')
         
         # Image on left or right
-        if image_src and image_alignment == 'left':
+        if image_src and image_src.strip() and image_alignment == 'left':
             # Image column (left)
-            html_parts.append('<td style="vertical-align: top; padding-right: 20px; width: auto;">')
+            html_parts.append(f'<td style="vertical-align: top; padding-right: 20px; width: {image_width}px;">')
             html_parts.append(
-                f'<img src="{image_src}" alt="{title}" '
-                f'style="width: {image_width}px; max-width: 100%; height: auto; display: block;">'
+                f'<img src="{image_src}" alt="{title or "Layer Image"}" '
+                f'width="{image_width}" style="width: {image_width}px; max-width: 100%; height: auto; display: block; border: 0; outline: none;">'
             )
             html_parts.append('</td>')
             
             # Text column (right)
-            html_parts.append('<td style="vertical-align: top; width: 100%;">')
+            html_parts.append('<td style="vertical-align: top;">')
             html_parts.extend(NewsletterGenerator._generate_layer_text(
                 title, subtitle, subtitle2, content,
                 title_color, subtitle_color, subtitle2_color, text_color,
@@ -181,7 +190,7 @@ class NewsletterGenerator:
             ))
             html_parts.append('</td>')
             
-        elif image_src and image_alignment == 'right':
+        elif image_src and image_src.strip() and image_alignment == 'right':
             # Text column (left)
             html_parts.append('<td style="vertical-align: top; width: 100%;">')
             html_parts.extend(NewsletterGenerator._generate_layer_text(
@@ -192,10 +201,10 @@ class NewsletterGenerator:
             html_parts.append('</td>')
             
             # Image column (right)
-            html_parts.append('<td style="vertical-align: top; padding-left: 20px; width: auto;">')
+            html_parts.append(f'<td style="vertical-align: top; padding-left: 20px; width: {image_width}px;">')
             html_parts.append(
-                f'<img src="{image_src}" alt="{title}" '
-                f'style="width: {image_width}px; max-width: 100%; height: auto; display: block;">'
+                f'<img src="{image_src}" alt="{title or "Layer Image"}" '
+                f'width="{image_width}" style="width: {image_width}px; max-width: 100%; height: auto; display: block; border: 0; outline: none;">'
             )
             html_parts.append('</td>')
         else:
@@ -813,6 +822,8 @@ def render_layer_form(layer_number: int) -> Dict:
             # Process image to Base64
             if image_file is not None:
                 image_base64 = ImageProcessor.convert_to_base64(image_file)
+                if image_base64 is None:
+                    st.warning(f"⚠️ Error processing image for Layer {layer_number}. Please try uploading again.")
         
         image_alignment = st.selectbox(
             f"Image Position - Layer {layer_number}",
