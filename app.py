@@ -219,7 +219,7 @@ class NewsletterGenerator:
         header_text = header_config.get('header_text', '').strip()
         header_image_base64 = header_config.get('header_image_base64')
         header_image_url = header_config.get('header_image_url')
-        header_bg_color = header_config.get('header_bg_color', '#f0f0f0')
+        header_bg_color = header_config.get('header_bg_color', '#ffffff')
         image_width = header_config.get('image_width', 600)
         title_font_size = header_config.get('title_font_size', 28)
         text_font_size = header_config.get('text_font_size', 16)
@@ -429,7 +429,7 @@ def render_header_config(email_subject: str) -> Dict:
         
         header_title = st.text_input(
             "Header Title",
-            value="",
+            value="Sehr geehrte/r Frau/Herr....",
             placeholder="Ejemplo: Sehr geehrte/r Frau/Herr...",
             key="header_title",
             help="The title displayed in the newsletter header"
@@ -437,7 +437,7 @@ def render_header_config(email_subject: str) -> Dict:
         
         header_text = st.text_area(
             "Header Text",
-            value="",
+            value="ich freue mich Ihnen unsere neuesten Angebote der beruflichen Fortbildungszentren der Bayerischen Wirtschaft (bfz) gGmbH vorzustellen. Mit unserer Jahrzehnten langen Erfahrung sind wir Ihr erfolgreicher Partner für Beratung, Bildung und Integration für Arbeitnehmer*innen.",
             key="header_text",
             help="Text content below the title in the header",
             height=100
@@ -454,7 +454,7 @@ def render_header_config(email_subject: str) -> Dict:
         
         header_bg_color = st.color_picker(
             "Header Background Color",
-            value="#f0f0f0",
+            value="#ffffff",
             key="header_bg_color",
             help="Background color for the header section"
         )
@@ -463,8 +463,8 @@ def render_header_config(email_subject: str) -> Dict:
         image_width = st.number_input(
             "Image Width (px)",
             min_value=50,
-            max_value=800,
-            value=600,
+            max_value=1200,
+            value=1000,
             step=10,
             key="header_image_width",
             help="Width of the header image in pixels"
@@ -597,6 +597,7 @@ def render_layer_form(layer_number: int) -> Dict:
         title = st.text_input(
             f"Title (H2) - Layer {layer_number}",
             key=f"title_{layer_number}",
+            value="P.I.A SPEED Einzelcoaching",
             placeholder="Enter layer title..."
         )
     
@@ -604,12 +605,14 @@ def render_layer_form(layer_number: int) -> Dict:
         subtitle = st.text_input(
             f"Subtitle (H3) - Layer {layer_number}",
             key=f"subtitle_{layer_number}",
+            value="Perspektive. Integration. Arbeit.",
             placeholder="Enter layer subtitle..."
         )
     
     content = st.text_area(
         f"Main Content - Layer {layer_number}",
         key=f"content_{layer_number}",
+        value="Ist ein individuell kombinierbares Angebot für Menschen, denen ohne Unterstützung der Einstieg in den deutschen Arbeitsmarkt nicht gelingt. Diese Maßnahme basiert auf dem Zertifikat: 2025M100864-10001.",
         placeholder="Enter the main content for this layer...",
         height=150
     )
