@@ -148,7 +148,7 @@ class NewsletterGenerator:
             image_src = image_base64
         else:
             image_src = None
-        image_width = layer.get('image_width', 300)
+        image_width = layer.get('image_width', 210)
         
         title = layer.get('title', '')
         subtitle = layer.get('subtitle', '')
@@ -838,7 +838,7 @@ def render_layer_form(layer_number: int) -> Dict:
             f"Image Width (px) - Layer {layer_number}",
             min_value=50,
             max_value=800,
-            value=300,
+            value=210,
             step=10,
             key=f"image_width_{layer_number}",
             help="Width of the image in pixels"
