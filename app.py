@@ -11,6 +11,7 @@ from typing import Dict, List, Optional
 
 import streamlit as st
 from PIL import Image
+from streamlit_quill import st_quill
 
 
 class ImageProcessor:
@@ -826,12 +827,21 @@ def render_header_config(email_subject: str) -> Dict:
     # Header Text with styling
     col_text_1, col_text_2, col_text_3, col_text_4 = st.columns([3, 1, 1, 1])
     with col_text_1:
-        header_text = st.text_area(
-            "Header Text",
+        st.markdown("**Header Text**")
+        header_text = st_quill(
             value="ich freue mich Ihnen unsere neuesten Angebote der beruflichen Fortbildungszentren der Bayerischen Wirtschaft (bfz) gGmbH vorzustellen. Mit unserer Jahrzehnten langen Erfahrung sind wir Ihr erfolgreicher Partner für Beratung, Bildung und Integration für Arbeitnehmer*innen.",
+            placeholder="Enter header text here...",
+            html=True,  # Return HTML content
             key="header_text",
-            height=150,
-            help="Header text content"
+            toolbar=[
+                [{'size': ['small', False, 'large', 'huge']}],
+                ['bold', 'italic', 'underline', 'strike'],
+                [{'align': []}],
+                [{'list': 'ordered'}, {'list': 'bullet'}],
+                [{'color': []}, {'background': []}],
+                ['link'],
+                ['clean']
+            ]
         )
     with col_text_2:
         text_color = st.color_picker(
@@ -1420,12 +1430,20 @@ def render_layer_form(layer_number: int) -> Dict:
             help="Make third title bold"
         )
     
-    content = st.text_area(
-        f"Main Content - Layer {layer_number}",
+    st.markdown(f"**Main Content - Layer {layer_number}**")
+    content = st_quill(
         value="Ist ein individuell kombinierbares Angebot für Menschen, denen ohne Unterstützung der Einstieg in den deutschen Arbeitsmarkt nicht gelingt. Diese Maßnahme basiert auf dem Zertifikat: 2025M100864-10001.",
+        placeholder="Enter main content here...",
+        html=True,  # Return HTML content
         key=f"content_{layer_number}",
-        height=200,
-        help="Main content for this layer"
+        toolbar=[
+            [{'header': [1, 2, 3, False]}],
+            ['bold', 'italic', 'underline', 'strike'],
+            [{'list': 'ordered'}, {'list': 'bullet'}],
+            [{'color': []}, {'background': []}],
+            ['link'],
+            ['clean']
+        ]
     )
     
     # Main Content styling
