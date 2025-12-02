@@ -1115,25 +1115,29 @@ def render_header_config(email_subject: str) -> Dict:
     st.markdown("**Header Text**")
     # Ensure the value is in session_state before creating the widget
     # IMPORTANT: Initialize or ensure value exists BEFORE widget creation
-    # Use a counter to force widget reinitialization when template is loaded
-    if "header_text_reinit_counter" not in st.session_state:
-        st.session_state["header_text_reinit_counter"] = 0
     if "header_text" not in st.session_state:
         st.session_state["header_text"] = ""
-    # Get the current value, prioritizing the temp value if it exists (from template load)
-    header_text_value = st.session_state.get("_header_text_temp", st.session_state.get("header_text", ""))
+    # Check if template was loaded (indicated by temp key)
     if "_header_text_temp" in st.session_state:
-        # Template was loaded, update the value and increment counter
+        # Template was loaded, update the value and use a unique key to force reinitialization
+        header_text_value = st.session_state["_header_text_temp"]
         st.session_state["header_text"] = header_text_value
-        st.session_state["header_text_reinit_counter"] = st.session_state.get("header_text_reinit_counter", 0) + 1
+        # Use a timestamp-based key to force widget reinitialization
+        if "header_text_load_timestamp" not in st.session_state:
+            st.session_state["header_text_load_timestamp"] = 0
+        st.session_state["header_text_load_timestamp"] = st.session_state.get("header_text_load_timestamp", 0) + 1
         del st.session_state["_header_text_temp"]
+        # Use unique key only when template was loaded
+        widget_key = f"header_text_loaded_{st.session_state['header_text_load_timestamp']}"
+    else:
+        # Normal usage, use standard key
+        widget_key = "header_text"
     # st_quill will use the value from session_state via key=
-    # Use a unique key that includes the counter to force reinitialization
     header_text = st_quill(
         value=st.session_state.get("header_text", ""),
         placeholder="e.g., Enter header text here...",
         html=True,  # Return HTML content
-        key=f"header_text_{st.session_state.get('header_text_reinit_counter', 0)}",
+        key=widget_key,
         toolbar=[
             [{'size': ['small', False, 'large', 'huge']}],
             ['bold', 'italic', 'underline', 'strike'],
@@ -1882,28 +1886,32 @@ def render_layer_form(layer_number: int) -> Dict:
     st.markdown(f"**Main Content - Layer {layer_number}**")
     # Ensure the value is in session_state before creating the widget
     content_key = f"content_{layer_number}"
-    # Use a counter to force widget reinitialization when template is loaded
-    reinit_counter_key = f"{content_key}_reinit_counter"
-    if reinit_counter_key not in st.session_state:
-        st.session_state[reinit_counter_key] = 0
     # IMPORTANT: Initialize or ensure value exists BEFORE widget creation
     if content_key not in st.session_state:
         st.session_state[content_key] = ""
-    # Get the current value, prioritizing the temp value if it exists (from template load)
+    # Check if template was loaded (indicated by temp key)
     temp_key = f"_{content_key}_temp"
-    content_value = st.session_state.get(temp_key, st.session_state.get(content_key, ""))
     if temp_key in st.session_state:
-        # Template was loaded, update the value and increment counter
+        # Template was loaded, update the value and use a unique key to force reinitialization
+        content_value = st.session_state[temp_key]
         st.session_state[content_key] = content_value
-        st.session_state[reinit_counter_key] = st.session_state.get(reinit_counter_key, 0) + 1
+        # Use a timestamp-based key to force widget reinitialization
+        load_timestamp_key = f"{content_key}_load_timestamp"
+        if load_timestamp_key not in st.session_state:
+            st.session_state[load_timestamp_key] = 0
+        st.session_state[load_timestamp_key] = st.session_state.get(load_timestamp_key, 0) + 1
         del st.session_state[temp_key]
+        # Use unique key only when template was loaded
+        widget_key = f"{content_key}_loaded_{st.session_state[load_timestamp_key]}"
+    else:
+        # Normal usage, use standard key
+        widget_key = content_key
     # st_quill will use the value from session_state via key=
-    # Use a unique key that includes the counter to force reinitialization
     content = st_quill(
         value=st.session_state.get(content_key, ""),
         placeholder="e.g., Enter main content here...",
         html=True,  # Return HTML content
-        key=f"{content_key}_{st.session_state.get(reinit_counter_key, 0)}",
+        key=widget_key,
         toolbar=[
             [{'header': [1, 2, 3, False]}],
             ['bold', 'italic', 'underline', 'strike'],
