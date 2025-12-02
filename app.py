@@ -678,10 +678,19 @@ class NewsletterGenerator:
         # Image section (if provided)
         if image_src:
             html_parts.append('<div style="margin-bottom: 20px;">')
+            # Check if footer image should be a link
+            footer_image_link_url = footer_config.get('footer_image_link_url', '')
+            if footer_image_link_url and footer_image_link_url.strip():
+                # Wrap image in a link
+                html_parts.append(
+                    f'<a href="{footer_image_link_url}" target="_blank" rel="noopener noreferrer" style="text-decoration: none; display: inline-block;">'
+                )
             html_parts.append(
                 f'<img src="{image_src}" alt="{company_name or "Footer Image"}" '
                 f'width="{image_width}" style="width: {image_width}px; max-width: 100%; height: auto; display: inline-block; border: 0; outline: none; background-color: transparent;">'
             )
+            if footer_image_link_url and footer_image_link_url.strip():
+                html_parts.append('</a>')
             html_parts.append('</div>')
         
         # Company information
@@ -1260,6 +1269,14 @@ def render_footer_config() -> Dict:
             help="Background color for the footer section"
         )
     
+    # Footer Image External Link URL (optional)
+    footer_image_link_url = st.text_input(
+        "Footer Image External Link URL (Optional)",
+        value=st.session_state.get("footer_image_link_url", ""),
+        key="footer_image_link_url",
+        help="If provided, the footer image will be clickable and link to this URL"
+    )
+    
     # Second row: Image Source (full width)
     image_source_options = ["External URL", "Upload Image (Base64)"]
     raw_value = st.session_state.get("footer_image_source", "External URL")
@@ -1689,6 +1706,7 @@ def render_footer_config() -> Dict:
     return {
         'footer_image_base64': footer_image_base64,
         'footer_image_url': footer_image_url,
+        'footer_image_link_url': footer_image_link_url,
         'company_name': company_name,
         'address': address,
         'directors': directors,
@@ -2305,6 +2323,8 @@ def apply_template_to_session_state(template_data: dict):
     # If neither exists, don't set image_source (will default to 0)
     if 'image_width' in footer_config:
         st.session_state['footer_image_width'] = int(footer_config['image_width'])
+    if 'footer_image_link_url' in footer_config:
+        st.session_state['footer_image_link_url'] = str(footer_config['footer_image_link_url']) if footer_config['footer_image_link_url'] is not None else ""
     if 'footer_alignment' in footer_config:
         alignment_map = {'Left': 0, 'Center': 1, 'Right': 2}
         st.session_state['footer_alignment'] = int(alignment_map.get(str(footer_config['footer_alignment']), 0))
