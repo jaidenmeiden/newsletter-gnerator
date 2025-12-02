@@ -1043,7 +1043,7 @@ def render_header_config(email_subject: str) -> Dict:
                 st.info("ℹ️ Image loaded from saved template")
                 # Display the loaded image
                 try:
-                    st.image(existing_base64, caption="Header Image (from template)", use_container_width=True)
+                    st.image(existing_base64, width=None, use_container_width=False)
                 except Exception as e:
                     st.warning(f"No se pudo mostrar la imagen: {str(e)}")
                 header_image_base64 = existing_base64
@@ -1113,8 +1113,11 @@ def render_header_config(email_subject: str) -> Dict:
     
     # Header Text with styling
     st.markdown("**Header Text**")
+    # Ensure the value is in session_state before creating the widget
+    if "header_text" not in st.session_state:
+        st.session_state["header_text"] = ""
     header_text = st_quill(
-        value="",
+        value=st.session_state["header_text"],
         placeholder="e.g., Enter header text here...",
         html=True,  # Return HTML content
         key="header_text",
@@ -1257,7 +1260,7 @@ def render_footer_config() -> Dict:
                 st.info("ℹ️ Image loaded from saved template")
                 # Display the loaded image
                 try:
-                    st.image(existing_base64, caption="Footer Image (from template)", use_container_width=True)
+                    st.image(existing_base64, width=None, use_container_width=False)
                 except Exception as e:
                     st.warning(f"No se pudo mostrar la imagen: {str(e)}")
                 footer_image_base64 = existing_base64
@@ -1295,7 +1298,7 @@ def render_footer_config() -> Dict:
     with col_cn_1:
         company_name = st.text_input(
             "Company Name",
-            value="",
+            value=st.session_state.get("footer_company_name", ""),
             placeholder="e.g., Your Company Name",
             key="footer_company_name",
             help="Company or organization name"
@@ -1330,7 +1333,7 @@ def render_footer_config() -> Dict:
     with col_addr_1:
         address = st.text_area(
             "Company Address",
-            value="",
+            value=st.session_state.get("footer_address", ""),
             placeholder="e.g., 123 Main Street, Suite 400, City, State 12345",
             key="footer_address",
             help="Company address and registration information",
@@ -1366,7 +1369,7 @@ def render_footer_config() -> Dict:
     with col_dir_1:
         directors = st.text_area(
             "Responsibles",
-            value="",
+            value=st.session_state.get("footer_directors", ""),
             placeholder="e.g., Managing Directors: John Smith, Jane Doe",
             key="footer_directors",
             help="Company directors or responsible persons",
@@ -1433,24 +1436,40 @@ def render_footer_config() -> Dict:
             help="Make social media label bold"
         )
     social_media_type_options = ["URLs Only", "Images"]
-    social_media_type_index = st.session_state.get("footer_social_type", 0)
-    # Ensure index is an integer
-    try:
-        social_media_type_index = int(social_media_type_index) if social_media_type_index is not None else 0
-    except (ValueError, TypeError):
-        social_media_type_index = 0
-    # Ensure index is within valid range
-    social_media_type_index = max(0, min(1, social_media_type_index))
-    # Use temporary key to avoid serialization issues
+    raw_value = st.session_state.get("footer_social_type", "URLs Only")
+    
+    # Check if there are any social media images loaded - if so, default to "Images"
+    has_social_images = any([
+        st.session_state.get("footer_facebook_image_base64"),
+        st.session_state.get("footer_linkedin_image_base64"),
+        st.session_state.get("footer_xing_image_base64"),
+        st.session_state.get("footer_instagram_image_base64")
+    ])
+    
+    # Handle both old format (int index) and new format (option string)
+    # IMPORTANT: Set the value in session_state BEFORE creating the widget
+    if isinstance(raw_value, int):
+        # Old format: convert index to option string
+        social_media_type_value = social_media_type_options[max(0, min(1, raw_value))]
+        st.session_state["footer_social_type"] = social_media_type_value
+    elif raw_value not in social_media_type_options:
+        # Invalid value or if we have images, default to "Images", otherwise "URLs Only"
+        social_media_type_value = "Images" if has_social_images else "URLs Only"
+        st.session_state["footer_social_type"] = social_media_type_value
+    else:
+        # Value is already a valid option string, but if we have images and it's "URLs Only", change to "Images"
+        if has_social_images and raw_value == "URLs Only":
+            st.session_state["footer_social_type"] = "Images"
+        elif "footer_social_type" not in st.session_state or st.session_state["footer_social_type"] != raw_value:
+            st.session_state["footer_social_type"] = raw_value
+    
+    # Use the session_state key directly - Streamlit will use the value from session_state
     social_media_type = st.radio(
         "Social Media Type",
         options=social_media_type_options,
-        index=social_media_type_index,
-        key="footer_social_type_radio",
+        key="footer_social_type",
         help="Choose between text links or image icons"
     )
-    # Update session_state with the selected index
-    st.session_state["footer_social_type"] = social_media_type_options.index(social_media_type)
     
     if social_media_type == "Images":
         social_image_width = st.number_input(
@@ -1480,7 +1499,7 @@ def render_footer_config() -> Dict:
             if existing_facebook_base64:
                 st.info("ℹ️ Facebook image loaded from template")
                 try:
-                    st.image(existing_facebook_base64, caption="Facebook Icon (from template)", width=50)
+                    st.image(existing_facebook_base64, width=50)
                 except Exception as e:
                     st.warning(f"No se pudo mostrar la imagen: {str(e)}")
             
@@ -1506,7 +1525,7 @@ def render_footer_config() -> Dict:
             if existing_linkedin_base64:
                 st.info("ℹ️ LinkedIn image loaded from template")
                 try:
-                    st.image(existing_linkedin_base64, caption="LinkedIn Icon (from template)", width=50)
+                    st.image(existing_linkedin_base64, width=50)
                 except Exception as e:
                     st.warning(f"No se pudo mostrar la imagen: {str(e)}")
             
@@ -1534,7 +1553,7 @@ def render_footer_config() -> Dict:
             if existing_xing_base64:
                 st.info("ℹ️ Xing image loaded from template")
                 try:
-                    st.image(existing_xing_base64, caption="Xing Icon (from template)", width=50)
+                    st.image(existing_xing_base64, width=50)
                 except Exception as e:
                     st.warning(f"No se pudo mostrar la imagen: {str(e)}")
             
@@ -1560,7 +1579,7 @@ def render_footer_config() -> Dict:
             if existing_instagram_base64:
                 st.info("ℹ️ Instagram image loaded from template")
                 try:
-                    st.image(existing_instagram_base64, caption="Instagram Icon (from template)", width=50)
+                    st.image(existing_instagram_base64, width=50)
                 except Exception as e:
                     st.warning(f"No se pudo mostrar la imagen: {str(e)}")
             
@@ -1848,11 +1867,15 @@ def render_layer_form(layer_number: int) -> Dict:
         )
     
     st.markdown(f"**Main Content - Layer {layer_number}**")
+    # Ensure the value is in session_state before creating the widget
+    content_key = f"content_{layer_number}"
+    if content_key not in st.session_state:
+        st.session_state[content_key] = ""
     content = st_quill(
-        value="",
+        value=st.session_state[content_key],
         placeholder="e.g., Enter main content here...",
         html=True,  # Return HTML content
-        key=f"content_{layer_number}",
+        key=content_key,
         toolbar=[
             [{'header': [1, 2, 3, False]}],
             ['bold', 'italic', 'underline', 'strike'],
@@ -1936,9 +1959,11 @@ def render_layer_form(layer_number: int) -> Dict:
         else:
             if existing_base64:
                 st.info(f"ℹ️ Image loaded from saved template (Layer {layer_number})")
-                # Display the loaded image
+                # Display the loaded image at 40% width
                 try:
-                    st.image(existing_base64, caption=f"Layer {layer_number} Image (from template)", use_container_width=True)
+                    col_img_left, col_img_right = st.columns([2, 3])
+                    with col_img_left:
+                        st.image(existing_base64, width=None, use_container_width=True)
                 except Exception as e:
                     st.warning(f"No se pudo mostrar la imagen: {str(e)}")
                 image_base64 = existing_base64
@@ -2192,12 +2217,12 @@ def apply_template_to_session_state(template_data: dict):
     if 'footer_alignment' in footer_config:
         alignment_map = {'Left': 0, 'Center': 1, 'Right': 2}
         st.session_state['footer_alignment'] = int(alignment_map.get(str(footer_config['footer_alignment']), 0))
-    if 'footer_company_name' in footer_config:
-        st.session_state['footer_company_name'] = footer_config['company_name']
-    if 'footer_address' in footer_config:
-        st.session_state['footer_address'] = footer_config['address']
-    if 'footer_directors' in footer_config:
-        st.session_state['footer_directors'] = footer_config['directors']
+    if 'company_name' in footer_config:
+        st.session_state['footer_company_name'] = str(footer_config['company_name']) if footer_config['company_name'] is not None else ""
+    if 'address' in footer_config:
+        st.session_state['footer_address'] = str(footer_config['address']) if footer_config['address'] is not None else ""
+    if 'directors' in footer_config:
+        st.session_state['footer_directors'] = str(footer_config['directors']) if footer_config['directors'] is not None else ""
     # Footer styling
     if 'company_name_color' in footer_config:
         st.session_state['footer_company_name_color'] = footer_config['company_name_color']
@@ -2218,9 +2243,24 @@ def apply_template_to_session_state(template_data: dict):
     if 'directors_bold' in footer_config:
         st.session_state['footer_directors_bold'] = bool(footer_config['directors_bold'])
     # Social media
+    # Check if there are any social media images - if so, set type to "Images"
+    has_social_images = any([
+        footer_config.get('facebook_image_base64'),
+        footer_config.get('linkedin_image_base64'),
+        footer_config.get('xing_image_base64'),
+        footer_config.get('instagram_image_base64')
+    ])
+    
     if 'social_media_type' in footer_config:
-        social_type_index = 0 if str(footer_config['social_media_type']) == 'URLs Only' else 1
-        st.session_state['footer_social_type'] = int(social_type_index)
+        social_media_type_str = str(footer_config['social_media_type'])
+        # If we have images, always use "Images", otherwise use the stored value
+        if has_social_images:
+            st.session_state['footer_social_type'] = "Images"
+        else:
+            st.session_state['footer_social_type'] = social_media_type_str if social_media_type_str in ["URLs Only", "Images"] else "URLs Only"
+    elif has_social_images:
+        # If no type specified but we have images, default to "Images"
+        st.session_state['footer_social_type'] = "Images"
     if 'social_media_label' in footer_config:
         st.session_state['footer_social_label'] = footer_config['social_media_label']
     if 'social_label_color' in footer_config:
