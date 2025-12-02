@@ -352,6 +352,10 @@ class NewsletterGenerator:
         content_font_size = layer.get('content_font_size', 13)
         content_color = layer.get('content_color', '#000000')
         
+        # Get link URL if provided
+        link_url = layer.get('link_url', '').strip()
+        has_link = bool(link_url)
+        
         # Layer container with padding
         html_parts.append('<tr>')
         html_parts.append(f'<td style="padding: {padding}px 20px;">')
@@ -362,51 +366,83 @@ class NewsletterGenerator:
         
         # Image on left or right
         if image_src and image_src.strip() and image_alignment == 'left':
-            # Image column (left) - transparent background to preserve PNG transparency
-            html_parts.append(f'<td style="vertical-align: top; padding-right: 20px; width: {image_width}px; background-color: transparent;">')
-            html_parts.append(
-                f'<img src="{image_src}" alt="{title or "Layer Image"}" '
-                f'width="{image_width}" style="width: {image_width}px; max-width: 100%; height: auto; display: block; border: 0; outline: none; background-color: transparent;">'
-            )
-            html_parts.append('</td>')
+            # Image column (left) - wrap in link if provided (Outlook compatible)
+            if has_link:
+                html_parts.append(f'<td style="vertical-align: top; padding-right: 20px; width: {image_width}px; background-color: transparent;">')
+                html_parts.append(f'<a href="{link_url}" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit; display: block;">')
+                html_parts.append(
+                    f'<img src="{image_src}" alt="{title or "Layer Image"}" '
+                    f'width="{image_width}" style="width: {image_width}px; max-width: 100%; height: auto; display: block; border: 0; outline: none; background-color: transparent;">'
+                )
+                html_parts.append('</a>')
+                html_parts.append('</td>')
+            else:
+                html_parts.append(f'<td style="vertical-align: top; padding-right: 20px; width: {image_width}px; background-color: transparent;">')
+                html_parts.append(
+                    f'<img src="{image_src}" alt="{title or "Layer Image"}" '
+                    f'width="{image_width}" style="width: {image_width}px; max-width: 100%; height: auto; display: block; border: 0; outline: none; background-color: transparent;">'
+                )
+                html_parts.append('</td>')
             
-            # Text column (right)
+            # Text column (right) - wrap in link if provided (Outlook compatible)
             html_parts.append('<td style="vertical-align: top;">')
+            if has_link:
+                html_parts.append(f'<a href="{link_url}" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit; display: block;">')
             html_parts.extend(NewsletterGenerator._generate_layer_text(
                 title, subtitle, subtitle2, content,
                 title_color, subtitle_color, subtitle2_color, content_color,
                 title_font_size, subtitle_font_size, subtitle2_font_size, content_font_size,
                 title_bold, subtitle_bold, subtitle2_bold
             ))
+            if has_link:
+                html_parts.append('</a>')
             html_parts.append('</td>')
             
         elif image_src and image_src.strip() and image_alignment == 'right':
-            # Text column (left) - use auto width to allow proper layout
+            # Text column (left) - wrap in link if provided (Outlook compatible)
             html_parts.append('<td style="vertical-align: top; padding-right: 20px;">')
+            if has_link:
+                html_parts.append(f'<a href="{link_url}" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit; display: block;">')
             html_parts.extend(NewsletterGenerator._generate_layer_text(
                 title, subtitle, subtitle2, content,
                 title_color, subtitle_color, subtitle2_color, content_color,
                 title_font_size, subtitle_font_size, subtitle2_font_size, content_font_size,
                 title_bold, subtitle_bold, subtitle2_bold
             ))
+            if has_link:
+                html_parts.append('</a>')
             html_parts.append('</td>')
             
-            # Image column (right) - transparent background to preserve PNG transparency
-            html_parts.append(f'<td style="vertical-align: top; width: {image_width}px; background-color: transparent;">')
-            html_parts.append(
-                f'<img src="{image_src}" alt="{title or "Layer Image"}" '
-                f'width="{image_width}" style="width: {image_width}px; max-width: 100%; height: auto; display: block; border: 0; outline: none; background-color: transparent;">'
-            )
-            html_parts.append('</td>')
+            # Image column (right) - wrap in link if provided (Outlook compatible)
+            if has_link:
+                html_parts.append(f'<td style="vertical-align: top; width: {image_width}px; background-color: transparent;">')
+                html_parts.append(f'<a href="{link_url}" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit; display: block;">')
+                html_parts.append(
+                    f'<img src="{image_src}" alt="{title or "Layer Image"}" '
+                    f'width="{image_width}" style="width: {image_width}px; max-width: 100%; height: auto; display: block; border: 0; outline: none; background-color: transparent;">'
+                )
+                html_parts.append('</a>')
+                html_parts.append('</td>')
+            else:
+                html_parts.append(f'<td style="vertical-align: top; width: {image_width}px; background-color: transparent;">')
+                html_parts.append(
+                    f'<img src="{image_src}" alt="{title or "Layer Image"}" '
+                    f'width="{image_width}" style="width: {image_width}px; max-width: 100%; height: auto; display: block; border: 0; outline: none; background-color: transparent;">'
+                )
+                html_parts.append('</td>')
         else:
-            # No image, just text
+            # No image, just text - wrap in link if provided (Outlook compatible)
             html_parts.append('<td style="vertical-align: top; width: 100%;">')
+            if has_link:
+                html_parts.append(f'<a href="{link_url}" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit; display: block;">')
             html_parts.extend(NewsletterGenerator._generate_layer_text(
                 title, subtitle, subtitle2, content,
                 title_color, subtitle_color, subtitle2_color, content_color,
                 title_font_size, subtitle_font_size, subtitle2_font_size, content_font_size,
                 title_bold, subtitle_bold, subtitle2_bold
             ))
+            if has_link:
+                html_parts.append('</a>')
             html_parts.append('</td>')
         
         html_parts.append('</tr>')
@@ -1568,7 +1604,16 @@ def render_layer_form(layer_number: int) -> Dict:
     """
     st.subheader(f"Layer {layer_number}")
     
-    # Title 1 with styling
+    # External Link Configuration (first row)
+    link_url = st.text_input(
+        f"External Link URL - Layer {layer_number}",
+        value=st.session_state.get(f"link_url_{layer_number}", ""),
+        key=f"link_url_{layer_number}",
+        placeholder="e.g., https://example.com",
+        help="Optional: URL to open when clicking anywhere on this layer (opens in new tab)"
+    )
+    
+    # Title 1 with styling (second row)
     col_title1_1, col_title1_2, col_title1_3, col_title1_4 = st.columns([3, 1, 1, 1])
     with col_title1_1:
         title = st.text_input(
@@ -1812,6 +1857,7 @@ def render_layer_form(layer_number: int) -> Dict:
         'image_alignment': image_alignment,
         'image_width': image_width,
         'padding': padding,
+        'link_url': link_url,
         'title_color': title_color,
         'subtitle_color': subtitle_color,
         'subtitle2_color': subtitle2_color,
@@ -1922,6 +1968,8 @@ def apply_template_to_session_state(template_data: dict):
             st.session_state[f'image_width_{i}'] = layer['image_width']
         if 'padding' in layer:
             st.session_state[f'padding_{i}'] = layer['padding']
+        if 'link_url' in layer:
+            st.session_state[f'link_url_{i}'] = layer['link_url']
         if 'title_color' in layer:
             st.session_state[f'title_color_{i}'] = layer['title_color']
         if 'subtitle_color' in layer:
