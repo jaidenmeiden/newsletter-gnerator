@@ -724,36 +724,54 @@ class NewsletterGenerator:
         if social_media_type == "Images":
             # Use table-based layout for better Outlook compatibility
             # Each icon will be in its own table cell with padding for spacing
+            # Outlook requires more explicit spacing, so we use larger cell width and separate spacing cells
+            spacing_px = 10  # Spacing between icons in pixels (reduced since cells have extra width)
+            # Cell width is larger than icon width to provide internal padding
+            # This gives extra space around each icon for better visual separation
+            cell_width = social_image_width + 5  # Add 5px extra to cell width (can be adjusted)
+            
             if facebook_url and facebook_image_base64:
                 social_links.append(
-                    f'<td style="padding: 0 8px 0 0; vertical-align: middle;">'
+                    f'<td style="padding: 0; vertical-align: middle; text-align: center;" width="{cell_width}">'
                     f'<a href="{facebook_url}" target="_blank" rel="noopener noreferrer" style="display: inline-block; text-decoration: none;">'
-                    f'<img src="{facebook_image_base64}" alt="Facebook" width="{social_image_width}" '
-                    f'style="width: {social_image_width}px; height: auto; border: 0; outline: none; display: block;"></a>'
+                    f'<img src="{facebook_image_base64}" alt="Facebook" width="{social_image_width}" height="{social_image_width}" '
+                    f'style="width: {social_image_width}px !important; height: {social_image_width}px !important; max-width: {social_image_width}px; max-height: {social_image_width}px; border: 0; outline: none; display: block; object-fit: contain;"></a>'
                     f'</td>'
                 )
+                # Add spacing cell after icon (except for the last one)
+                if linkedin_url and linkedin_image_base64 or xing_url and xing_image_base64 or instagram_url and instagram_image_base64:
+                    social_links.append(f'<td style="padding: 0; width: {spacing_px}px; font-size: 0; line-height: 0;" width="{spacing_px}">&nbsp;</td>')
+            
             if linkedin_url and linkedin_image_base64:
                 social_links.append(
-                    f'<td style="padding: 0 8px 0 0; vertical-align: middle;">'
+                    f'<td style="padding: 0; vertical-align: middle; text-align: center;" width="{cell_width}">'
                     f'<a href="{linkedin_url}" target="_blank" rel="noopener noreferrer" style="display: inline-block; text-decoration: none;">'
-                    f'<img src="{linkedin_image_base64}" alt="LinkedIn" width="{social_image_width}" '
-                    f'style="width: {social_image_width}px; height: auto; border: 0; outline: none; display: block;"></a>'
+                    f'<img src="{linkedin_image_base64}" alt="LinkedIn" width="{social_image_width}" height="{social_image_width}" '
+                    f'style="width: {social_image_width}px !important; height: {social_image_width}px !important; max-width: {social_image_width}px; max-height: {social_image_width}px; border: 0; outline: none; display: block; object-fit: contain;"></a>'
                     f'</td>'
                 )
+                # Add spacing cell after icon (except for the last one)
+                if xing_url and xing_image_base64 or instagram_url and instagram_image_base64:
+                    social_links.append(f'<td style="padding: 0; width: {spacing_px}px; font-size: 0; line-height: 0;" width="{spacing_px}">&nbsp;</td>')
+            
             if xing_url and xing_image_base64:
                 social_links.append(
-                    f'<td style="padding: 0 8px 0 0; vertical-align: middle;">'
+                    f'<td style="padding: 0; vertical-align: middle; text-align: center;" width="{cell_width}">'
                     f'<a href="{xing_url}" target="_blank" rel="noopener noreferrer" style="display: inline-block; text-decoration: none;">'
-                    f'<img src="{xing_image_base64}" alt="Xing" width="{social_image_width}" '
-                    f'style="width: {social_image_width}px; height: auto; border: 0; outline: none; display: block;"></a>'
+                    f'<img src="{xing_image_base64}" alt="Xing" width="{social_image_width}" height="{social_image_width}" '
+                    f'style="width: {social_image_width}px !important; height: {social_image_width}px !important; max-width: {social_image_width}px; max-height: {social_image_width}px; border: 0; outline: none; display: block; object-fit: contain;"></a>'
                     f'</td>'
                 )
+                # Add spacing cell after icon (except for the last one)
+                if instagram_url and instagram_image_base64:
+                    social_links.append(f'<td style="padding: 0; width: {spacing_px}px; font-size: 0; line-height: 0;" width="{spacing_px}">&nbsp;</td>')
+            
             if instagram_url and instagram_image_base64:
                 social_links.append(
-                    f'<td style="padding: 0 8px 0 0; vertical-align: middle;">'
+                    f'<td style="padding: 0; vertical-align: middle; text-align: center;" width="{cell_width}">'
                     f'<a href="{instagram_url}" target="_blank" rel="noopener noreferrer" style="display: inline-block; text-decoration: none;">'
-                    f'<img src="{instagram_image_base64}" alt="Instagram" width="{social_image_width}" '
-                    f'style="width: {social_image_width}px; height: auto; border: 0; outline: none; display: block;"></a>'
+                    f'<img src="{instagram_image_base64}" alt="Instagram" width="{social_image_width}" height="{social_image_width}" '
+                    f'style="width: {social_image_width}px !important; height: {social_image_width}px !important; max-width: {social_image_width}px; max-height: {social_image_width}px; border: 0; outline: none; display: block; object-fit: contain;"></a>'
                     f'</td>'
                 )
         else:
@@ -780,7 +798,7 @@ class NewsletterGenerator:
                 )
             # Use table layout for images (better Outlook compatibility), div for text links
             if social_media_type == "Images":
-                html_parts.append('<table cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse;">')
+                html_parts.append('<table cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse; border-spacing: 0;">')
                 html_parts.append('<tr>')
                 html_parts.extend(social_links)
                 html_parts.append('</tr>')
