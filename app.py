@@ -76,7 +76,7 @@ class MongoManager:
         Returns:
             True if save successful, False otherwise
         """
-        if not self.collection:
+        if self.collection is None:
             if not self.connect():
                 return False
         
@@ -111,7 +111,7 @@ class MongoManager:
         Returns:
             List of template names
         """
-        if not self.collection:
+        if self.collection is None:
             if not self.connect():
                 return []
         
@@ -132,7 +132,7 @@ class MongoManager:
         Returns:
             Dictionary with template data or None if not found
         """
-        if not self.collection:
+        if self.collection is None:
             if not self.connect():
                 return None
         
