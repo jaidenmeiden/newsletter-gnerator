@@ -859,21 +859,27 @@ def render_sidebar() -> Dict:
             help="The subject line for your newsletter email"
         )
         
+        # Initialize default value if not in session_state to avoid conflicts
+        if "Number of Layers" not in st.session_state:
+            st.session_state["Number of Layers"] = 1
+        
         num_layers = st.number_input(
             "Number of Layers",
             min_value=1,
             max_value=10,
-            value=st.session_state.get("Number of Layers", 1),
             step=1,
             key="Number of Layers",
             help="Select the number of content sections (layers) in your newsletter"
         )
         
+        # Initialize default value if not in session_state to avoid conflicts
+        if "Maximum Newsletter Width (px)" not in st.session_state:
+            st.session_state["Maximum Newsletter Width (px)"] = 1000
+        
         max_width = st.number_input(
             "Maximum Newsletter Width (px)",
             min_value=300,
             max_value=1200,
-            value=st.session_state.get("Maximum Newsletter Width (px)", 1000),
             step=10,
             key="Maximum Newsletter Width (px)",
             help="Maximum width of the newsletter in pixels"
@@ -890,21 +896,37 @@ def render_sidebar() -> Dict:
             "Trebuchet MS, sans-serif",
             "Comic Sans MS, cursive"
         ]
-        font_family_index = st.session_state.get("Font Family", 0)
-        if isinstance(font_family_index, str):
+        
+        # Get and normalize Font Family index from session_state
+        font_family_value = st.session_state.get("Font Family", 0)
+        
+        # Ensure the value is a valid integer index
+        if isinstance(font_family_value, str):
             # If it's a string, find the index
             try:
-                font_family_index = font_options.index(font_family_index)
+                font_family_value = font_options.index(font_family_value)
             except ValueError:
-                font_family_index = 0
+                font_family_value = 0
+        else:
+            # Convert to int and ensure it's within valid range
+            try:
+                font_family_value = int(font_family_value)
+                if font_family_value < 0 or font_family_value >= len(font_options):
+                    font_family_value = 0
+            except (ValueError, TypeError):
+                font_family_value = 0
         
+        # Use a temporary key to avoid serialization issues, then update session_state
         font_family = st.selectbox(
             "Font Family",
             options=font_options,
-            index=font_family_index,
-            key="Font Family",
+            index=font_family_value,
+            key="font_family_selectbox",
             help="Font family for the newsletter text"
         )
+        
+        # Update session_state with the selected index
+        st.session_state["Font Family"] = font_options.index(font_family)
         
         st.subheader("Color Settings")
         background_color = st.color_picker(
@@ -970,6 +992,7 @@ def render_header_config(email_subject: str) -> Dict:
         )
     
     # Second row: Image Source
+    image_source_options = ["External URL", "Upload Image (Base64)"]
     image_source_index = st.session_state.get("header_image_source", 0)
     # Ensure index is an integer
     try:
@@ -978,13 +1001,16 @@ def render_header_config(email_subject: str) -> Dict:
         image_source_index = 0
     # Ensure index is within valid range
     image_source_index = max(0, min(1, image_source_index))
+    # Use temporary key to avoid serialization issues
     image_source = st.radio(
         "Image Source",
-        options=["External URL", "Upload Image (Base64)"],
+        options=image_source_options,
         index=image_source_index,
-        key="header_image_source",
+        key="header_image_source_radio",
         help="Choose how to provide the header image"
     )
+    # Update session_state with the selected index
+    st.session_state["header_image_source"] = image_source_options.index(image_source)
     
     # Third row: Header Image URL | Image Width (px)
     col_row3_1, col_row3_2 = st.columns(2)
@@ -1135,6 +1161,7 @@ def render_footer_config() -> Dict:
     # First row: Footer alignment | Footer Background Color
     col_row1_1, col_row1_2 = st.columns(2)
     with col_row1_1:
+        footer_alignment_options = ['Left', 'Center', 'Right']
         footer_alignment_index = st.session_state.get("footer_alignment", 0)
         # Ensure index is an integer
         try:
@@ -1143,13 +1170,16 @@ def render_footer_config() -> Dict:
             footer_alignment_index = 0
         # Ensure index is within valid range
         footer_alignment_index = max(0, min(2, footer_alignment_index))
+        # Use temporary key to avoid serialization issues
         footer_alignment = st.selectbox(
             "Footer Alignment",
-            options=['Left', 'Center', 'Right'],
+            options=footer_alignment_options,
             index=footer_alignment_index,
-            key="footer_alignment",
+            key="footer_alignment_selectbox",
             help="Alignment of the entire footer content (image and text)"
         )
+        # Update session_state with the selected index
+        st.session_state["footer_alignment"] = footer_alignment_options.index(footer_alignment)
     with col_row1_2:
         footer_bg_color = st.color_picker(
             "Footer Background Color",
@@ -1159,6 +1189,7 @@ def render_footer_config() -> Dict:
         )
     
     # Second row: Image Source (full width)
+    image_source_options = ["External URL", "Upload Image (Base64)"]
     image_source_index = st.session_state.get("footer_image_source", 0)
     # Ensure index is an integer
     try:
@@ -1167,13 +1198,16 @@ def render_footer_config() -> Dict:
         image_source_index = 0
     # Ensure index is within valid range
     image_source_index = max(0, min(1, image_source_index))
+    # Use temporary key to avoid serialization issues
     image_source = st.radio(
         "Image Source",
-        options=["External URL", "Upload Image (Base64)"],
+        options=image_source_options,
         index=image_source_index,
-        key="footer_image_source",
+        key="footer_image_source_radio",
         help="Choose how to provide the footer image"
     )
+    # Update session_state with the selected index
+    st.session_state["footer_image_source"] = image_source_options.index(image_source)
     
     # Second row: Footer Image URL | Image Width (px)
     col_row2_1, col_row2_2 = st.columns(2)
@@ -1365,6 +1399,7 @@ def render_footer_config() -> Dict:
             key="footer_social_label_bold",
             help="Make social media label bold"
         )
+    social_media_type_options = ["URLs Only", "Images"]
     social_media_type_index = st.session_state.get("footer_social_type", 0)
     # Ensure index is an integer
     try:
@@ -1373,13 +1408,16 @@ def render_footer_config() -> Dict:
         social_media_type_index = 0
     # Ensure index is within valid range
     social_media_type_index = max(0, min(1, social_media_type_index))
+    # Use temporary key to avoid serialization issues
     social_media_type = st.radio(
         "Social Media Type",
-        options=["URLs Only", "Images"],
+        options=social_media_type_options,
         index=social_media_type_index,
-        key="footer_social_type",
+        key="footer_social_type_radio",
         help="Choose between text links or image icons"
     )
+    # Update session_state with the selected index
+    st.session_state["footer_social_type"] = social_media_type_options.index(social_media_type)
     
     if social_media_type == "Images":
         social_image_width = st.number_input(
@@ -1754,6 +1792,7 @@ def render_layer_form(layer_number: int) -> Dict:
     st.markdown("**Image Configuration**")
     
     # Image source selection
+    image_source_options = ["External URL", "Upload Image (Base64)"]
     image_source_index = st.session_state.get(f"image_source_{layer_number}", 0)
     # Ensure index is an integer
     try:
@@ -1762,13 +1801,16 @@ def render_layer_form(layer_number: int) -> Dict:
         image_source_index = 0
     # Ensure index is within valid range
     image_source_index = max(0, min(1, image_source_index))
+    # Use temporary key to avoid serialization issues
     image_source = st.radio(
         f"Image Source - Layer {layer_number}",
-        options=["External URL", "Upload Image (Base64)"],
+        options=image_source_options,
         index=image_source_index,
-        key=f"image_source_{layer_number}",
+        key=f"image_source_radio_{layer_number}",
         help="Choose how to provide the image"
     )
+    # Update session_state with the selected index
+    st.session_state[f"image_source_{layer_number}"] = image_source_options.index(image_source)
     
     col_img1, col_img2 = st.columns(2)
     
@@ -1810,6 +1852,7 @@ def render_layer_form(layer_number: int) -> Dict:
                 # Use existing base64 from session_state
                 image_base64 = existing_base64
         
+        alignment_options = ['Left', 'Right']
         alignment_index = st.session_state.get(f"alignment_{layer_number}", 0)
         # Ensure index is an integer
         try:
@@ -1818,13 +1861,16 @@ def render_layer_form(layer_number: int) -> Dict:
             alignment_index = 0
         # Ensure index is within valid range
         alignment_index = max(0, min(1, alignment_index))
+        # Use temporary key to avoid serialization issues
         image_alignment = st.selectbox(
             f"Image Position - Layer {layer_number}",
-            options=['Left', 'Right'],
+            options=alignment_options,
             index=alignment_index,
-            key=f"alignment_{layer_number}",
+            key=f"alignment_selectbox_{layer_number}",
             help="Position of image relative to text"
         )
+        # Update session_state with the selected index
+        st.session_state[f"alignment_{layer_number}"] = alignment_options.index(image_alignment)
     
     with col_img2:
         image_width = st.number_input(
@@ -1886,12 +1932,15 @@ def apply_template_to_session_state(template_data: dict):
     subscription_config = template_data.get('subscription_config', {})
     
     # Apply basic config to session_state
+    # Convert all values to native Python types to avoid serialization issues
     if 'email_subject' in config:
-        st.session_state['Email Subject'] = config['email_subject']
+        st.session_state['Email Subject'] = str(config['email_subject']) if config['email_subject'] is not None else ""
     if 'num_layers' in config:
-        st.session_state['Number of Layers'] = config['num_layers']
+        # Convert to native Python int to avoid type issues with MongoDB int64
+        st.session_state['Number of Layers'] = int(config['num_layers'])
     if 'max_width' in config:
-        st.session_state['Maximum Newsletter Width (px)'] = config['max_width']
+        # Convert to native Python int
+        st.session_state['Maximum Newsletter Width (px)'] = int(config['max_width'])
     if 'font_family' in config:
         font_options = [
             "Oswald, sans-serif",
@@ -1904,16 +1953,19 @@ def apply_template_to_session_state(template_data: dict):
             "Trebuchet MS, sans-serif",
             "Comic Sans MS, cursive"
         ]
-        if config['font_family'] in font_options:
-            st.session_state['Font Family'] = font_options.index(config['font_family'])
+        font_family_str = str(config['font_family']) if config['font_family'] is not None else ""
+        if font_family_str in font_options:
+            # Ensure index is a native Python int
+            st.session_state['Font Family'] = int(font_options.index(font_family_str))
         else:
             st.session_state['Font Family'] = 0  # Default to first option
     if 'background_color' in config:
-        st.session_state['Background Color'] = config['background_color']
+        st.session_state['Background Color'] = str(config['background_color']) if config['background_color'] is not None else "#FFFFFF"
     if 'text_color' in config:
-        st.session_state['Text Color'] = config['text_color']
+        st.session_state['Text Color'] = str(config['text_color']) if config['text_color'] is not None else "#000000"
     if 'include_subscription' in config:
-        st.session_state['Include Subscription Section'] = config['include_subscription']
+        # Convert to native Python bool
+        st.session_state['Include Subscription Section'] = bool(config['include_subscription'])
     
     # Apply header config
     if 'pre_header_text' in header_config:
@@ -1928,21 +1980,21 @@ def apply_template_to_session_state(template_data: dict):
         st.session_state['header_image_base64'] = header_config['header_image_base64']
         st.session_state['header_image_source'] = 1  # Upload Image (Base64)
     if 'image_width' in header_config:
-        st.session_state['header_image_width'] = header_config['image_width']
+        st.session_state['header_image_width'] = int(header_config['image_width'])
     if 'header_title' in header_config:
-        st.session_state['header_title'] = header_config['header_title']
+        st.session_state['header_title'] = str(header_config['header_title']) if header_config['header_title'] is not None else ""
     if 'header_text' in header_config:
-        st.session_state['header_text'] = header_config['header_text']
+        st.session_state['header_text'] = str(header_config['header_text']) if header_config['header_text'] is not None else ""
     if 'header_title_color' in header_config:
-        st.session_state['header_title_color'] = header_config['title_color']
+        st.session_state['header_title_color'] = str(header_config['title_color']) if header_config.get('title_color') is not None else "#000000"
     if 'header_title_font_size' in header_config:
-        st.session_state['header_title_font_size'] = header_config['title_font_size']
+        st.session_state['header_title_font_size'] = int(header_config['title_font_size'])
     if 'header_title_bold' in header_config:
-        st.session_state['header_title_bold'] = header_config['title_bold']
+        st.session_state['header_title_bold'] = bool(header_config['title_bold'])
     if 'header_text_color' in header_config:
-        st.session_state['header_text_color'] = header_config['text_color']
+        st.session_state['header_text_color'] = str(header_config['text_color']) if header_config.get('text_color') is not None else "#000000"
     if 'header_text_font_size' in header_config:
-        st.session_state['header_text_font_size'] = header_config['text_font_size']
+        st.session_state['header_text_font_size'] = int(header_config['text_font_size'])
     
     # Apply layers
     for i, layer in enumerate(layers, start=1):
@@ -1962,12 +2014,12 @@ def apply_template_to_session_state(template_data: dict):
             st.session_state[f'image_base64_{i}'] = layer['image_base64']
             st.session_state[f'image_source_{i}'] = 1  # Upload Image (Base64)
         if 'image_alignment' in layer:
-            alignment_index = 0 if layer['image_alignment'].lower() == 'left' else 1
-            st.session_state[f'alignment_{i}'] = alignment_index
+            alignment_index = 0 if str(layer['image_alignment']).lower() == 'left' else 1
+            st.session_state[f'alignment_{i}'] = int(alignment_index)
         if 'image_width' in layer:
-            st.session_state[f'image_width_{i}'] = layer['image_width']
+            st.session_state[f'image_width_{i}'] = int(layer['image_width'])
         if 'padding' in layer:
-            st.session_state[f'padding_{i}'] = layer['padding']
+            st.session_state[f'padding_{i}'] = int(layer['padding'])
         if 'link_url' in layer:
             st.session_state[f'link_url_{i}'] = layer['link_url']
         if 'title_color' in layer:
@@ -1977,19 +2029,19 @@ def apply_template_to_session_state(template_data: dict):
         if 'subtitle2_color' in layer:
             st.session_state[f'subtitle2_color_{i}'] = layer['subtitle2_color']
         if 'title_font_size' in layer:
-            st.session_state[f'title_font_size_{i}'] = layer['title_font_size']
+            st.session_state[f'title_font_size_{i}'] = int(layer['title_font_size'])
         if 'title_bold' in layer:
-            st.session_state[f'title_bold_{i}'] = layer['title_bold']
+            st.session_state[f'title_bold_{i}'] = bool(layer['title_bold'])
         if 'subtitle_font_size' in layer:
-            st.session_state[f'subtitle_font_size_{i}'] = layer['subtitle_font_size']
+            st.session_state[f'subtitle_font_size_{i}'] = int(layer['subtitle_font_size'])
         if 'subtitle2_font_size' in layer:
-            st.session_state[f'subtitle2_font_size_{i}'] = layer['subtitle2_font_size']
+            st.session_state[f'subtitle2_font_size_{i}'] = int(layer['subtitle2_font_size'])
         if 'subtitle_bold' in layer:
-            st.session_state[f'subtitle_bold_{i}'] = layer['subtitle_bold']
+            st.session_state[f'subtitle_bold_{i}'] = bool(layer['subtitle_bold'])
         if 'subtitle2_bold' in layer:
-            st.session_state[f'subtitle2_bold_{i}'] = layer['subtitle2_bold']
+            st.session_state[f'subtitle2_bold_{i}'] = bool(layer['subtitle2_bold'])
         if 'content_font_size' in layer:
-            st.session_state[f'content_font_size_{i}'] = layer['content_font_size']
+            st.session_state[f'content_font_size_{i}'] = int(layer['content_font_size'])
         if 'content_color' in layer:
             st.session_state[f'content_color_{i}'] = layer['content_color']
     
@@ -2004,10 +2056,10 @@ def apply_template_to_session_state(template_data: dict):
         st.session_state['footer_image_base64'] = footer_config['footer_image_base64']
         st.session_state['footer_image_source'] = 1  # Upload Image (Base64)
     if 'image_width' in footer_config:
-        st.session_state['footer_image_width'] = footer_config['image_width']
+        st.session_state['footer_image_width'] = int(footer_config['image_width'])
     if 'footer_alignment' in footer_config:
         alignment_map = {'Left': 0, 'Center': 1, 'Right': 2}
-        st.session_state['footer_alignment'] = alignment_map.get(footer_config['footer_alignment'], 0)
+        st.session_state['footer_alignment'] = int(alignment_map.get(str(footer_config['footer_alignment']), 0))
     if 'footer_company_name' in footer_config:
         st.session_state['footer_company_name'] = footer_config['company_name']
     if 'footer_address' in footer_config:
@@ -2018,35 +2070,35 @@ def apply_template_to_session_state(template_data: dict):
     if 'company_name_color' in footer_config:
         st.session_state['footer_company_name_color'] = footer_config['company_name_color']
     if 'company_name_size' in footer_config:
-        st.session_state['footer_company_name_size'] = footer_config['company_name_size']
+        st.session_state['footer_company_name_size'] = int(footer_config['company_name_size'])
     if 'company_name_bold' in footer_config:
-        st.session_state['footer_company_name_bold'] = footer_config['company_name_bold']
+        st.session_state['footer_company_name_bold'] = bool(footer_config['company_name_bold'])
     if 'address_color' in footer_config:
-        st.session_state['footer_address_color'] = footer_config['address_color']
+        st.session_state['footer_address_color'] = str(footer_config['address_color']) if footer_config['address_color'] is not None else "#000000"
     if 'address_size' in footer_config:
-        st.session_state['footer_address_size'] = footer_config['address_size']
+        st.session_state['footer_address_size'] = int(footer_config['address_size'])
     if 'address_bold' in footer_config:
-        st.session_state['footer_address_bold'] = footer_config['address_bold']
+        st.session_state['footer_address_bold'] = bool(footer_config['address_bold'])
     if 'directors_color' in footer_config:
-        st.session_state['footer_directors_color'] = footer_config['directors_color']
+        st.session_state['footer_directors_color'] = str(footer_config['directors_color']) if footer_config['directors_color'] is not None else "#000000"
     if 'directors_size' in footer_config:
-        st.session_state['footer_directors_size'] = footer_config['directors_size']
+        st.session_state['footer_directors_size'] = int(footer_config['directors_size'])
     if 'directors_bold' in footer_config:
-        st.session_state['footer_directors_bold'] = footer_config['directors_bold']
+        st.session_state['footer_directors_bold'] = bool(footer_config['directors_bold'])
     # Social media
     if 'social_media_type' in footer_config:
-        social_type_index = 0 if footer_config['social_media_type'] == 'URLs Only' else 1
-        st.session_state['footer_social_type'] = social_type_index
+        social_type_index = 0 if str(footer_config['social_media_type']) == 'URLs Only' else 1
+        st.session_state['footer_social_type'] = int(social_type_index)
     if 'social_media_label' in footer_config:
         st.session_state['footer_social_label'] = footer_config['social_media_label']
     if 'social_label_color' in footer_config:
         st.session_state['footer_social_label_color'] = footer_config['social_label_color']
     if 'social_label_size' in footer_config:
-        st.session_state['footer_social_label_size'] = footer_config['social_label_size']
+        st.session_state['footer_social_label_size'] = int(footer_config['social_label_size'])
     if 'social_label_bold' in footer_config:
-        st.session_state['footer_social_label_bold'] = footer_config['social_label_bold']
+        st.session_state['footer_social_label_bold'] = bool(footer_config['social_label_bold'])
     if 'social_image_width' in footer_config:
-        st.session_state['footer_social_image_width'] = footer_config['social_image_width']
+        st.session_state['footer_social_image_width'] = int(footer_config['social_image_width'])
     if 'facebook_url' in footer_config:
         st.session_state['footer_facebook'] = footer_config['facebook_url']
     if 'linkedin_url' in footer_config:
