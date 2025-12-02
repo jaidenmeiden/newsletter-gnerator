@@ -722,29 +722,39 @@ class NewsletterGenerator:
         
         social_links = []
         if social_media_type == "Images":
+            # Use table-based layout for better Outlook compatibility
+            # Each icon will be in its own table cell with padding for spacing
             if facebook_url and facebook_image_base64:
                 social_links.append(
-                    f'<a href="{facebook_url}" target="_blank" rel="noopener noreferrer" style="margin: 0 10px; display: inline-block;">'
+                    f'<td style="padding: 0 8px 0 0; vertical-align: middle;">'
+                    f'<a href="{facebook_url}" target="_blank" rel="noopener noreferrer" style="display: inline-block; text-decoration: none;">'
                     f'<img src="{facebook_image_base64}" alt="Facebook" width="{social_image_width}" '
-                    f'style="width: {social_image_width}px; height: auto; border: 0; outline: none;"></a>'
+                    f'style="width: {social_image_width}px; height: auto; border: 0; outline: none; display: block;"></a>'
+                    f'</td>'
                 )
             if linkedin_url and linkedin_image_base64:
                 social_links.append(
-                    f'<a href="{linkedin_url}" target="_blank" rel="noopener noreferrer" style="margin: 0 10px; display: inline-block;">'
+                    f'<td style="padding: 0 8px 0 0; vertical-align: middle;">'
+                    f'<a href="{linkedin_url}" target="_blank" rel="noopener noreferrer" style="display: inline-block; text-decoration: none;">'
                     f'<img src="{linkedin_image_base64}" alt="LinkedIn" width="{social_image_width}" '
-                    f'style="width: {social_image_width}px; height: auto; border: 0; outline: none;"></a>'
+                    f'style="width: {social_image_width}px; height: auto; border: 0; outline: none; display: block;"></a>'
+                    f'</td>'
                 )
             if xing_url and xing_image_base64:
                 social_links.append(
-                    f'<a href="{xing_url}" target="_blank" rel="noopener noreferrer" style="margin: 0 10px; display: inline-block;">'
+                    f'<td style="padding: 0 8px 0 0; vertical-align: middle;">'
+                    f'<a href="{xing_url}" target="_blank" rel="noopener noreferrer" style="display: inline-block; text-decoration: none;">'
                     f'<img src="{xing_image_base64}" alt="Xing" width="{social_image_width}" '
-                    f'style="width: {social_image_width}px; height: auto; border: 0; outline: none;"></a>'
+                    f'style="width: {social_image_width}px; height: auto; border: 0; outline: none; display: block;"></a>'
+                    f'</td>'
                 )
             if instagram_url and instagram_image_base64:
                 social_links.append(
-                    f'<a href="{instagram_url}" target="_blank" rel="noopener noreferrer" style="margin: 0 10px; display: inline-block;">'
+                    f'<td style="padding: 0 8px 0 0; vertical-align: middle;">'
+                    f'<a href="{instagram_url}" target="_blank" rel="noopener noreferrer" style="display: inline-block; text-decoration: none;">'
                     f'<img src="{instagram_image_base64}" alt="Instagram" width="{social_image_width}" '
-                    f'style="width: {social_image_width}px; height: auto; border: 0; outline: none;"></a>'
+                    f'style="width: {social_image_width}px; height: auto; border: 0; outline: none; display: block;"></a>'
+                    f'</td>'
                 )
         else:
             if facebook_url:
@@ -768,9 +778,17 @@ class NewsletterGenerator:
                 html_parts.append(
                     f'<p style="color: {social_label_color}; margin: 0 0 10px 0; font-size: {social_label_size}px; font-weight: {social_label_weight};">{social_media_label}</p>'
                 )
-            html_parts.append('<div>')
-            html_parts.extend(social_links)
-            html_parts.append('</div>')
+            # Use table layout for images (better Outlook compatibility), div for text links
+            if social_media_type == "Images":
+                html_parts.append('<table cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse;">')
+                html_parts.append('<tr>')
+                html_parts.extend(social_links)
+                html_parts.append('</tr>')
+                html_parts.append('</table>')
+            else:
+                html_parts.append('<div>')
+                html_parts.extend(social_links)
+                html_parts.append('</div>')
             html_parts.append('</div>')
         
         html_parts.append('</td>')
