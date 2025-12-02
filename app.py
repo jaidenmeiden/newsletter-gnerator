@@ -1004,7 +1004,7 @@ def render_header_config(email_subject: str) -> Dict:
         header_title = st.text_input(
             "Header Title",
             value="",
-            placeholder="e.g., Sehr geehrte/r Frau/Herr...",
+            placeholder="e.g., Dear Sir/Madam...",
             key="header_title",
             help="The title displayed in the newsletter header"
         )
@@ -1193,7 +1193,7 @@ def render_footer_config() -> Dict:
         company_name = st.text_input(
             "Company Name",
             value="",
-            placeholder="e.g., bfz gGmbH",
+            placeholder="e.g., Your Company Name",
             key="footer_company_name",
             help="Company or organization name"
         )
@@ -1228,7 +1228,7 @@ def render_footer_config() -> Dict:
         address = st.text_area(
             "Company Address",
             value="",
-            placeholder="e.g., Registered Office/Commercial Register: Munich, Registration Number: HRB 121447",
+            placeholder="e.g., 123 Main Street, Suite 400, City, State 12345",
             key="footer_address",
             help="Company address and registration information",
             height=80
@@ -1264,7 +1264,7 @@ def render_footer_config() -> Dict:
         directors = st.text_area(
             "Responsibles",
             value="",
-            placeholder="e.g., Managing Directors: Sandra Stenger, Wolfgang Braun, Jörg Plesch",
+            placeholder="e.g., Managing Directors: John Smith, Jane Doe",
             key="footer_directors",
             help="Company directors or responsible persons",
             height=60
