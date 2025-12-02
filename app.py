@@ -1114,13 +1114,26 @@ def render_header_config(email_subject: str) -> Dict:
     # Header Text with styling
     st.markdown("**Header Text**")
     # Ensure the value is in session_state before creating the widget
+    # IMPORTANT: Initialize or ensure value exists BEFORE widget creation
+    # Use a counter to force widget reinitialization when template is loaded
+    if "header_text_reinit_counter" not in st.session_state:
+        st.session_state["header_text_reinit_counter"] = 0
     if "header_text" not in st.session_state:
         st.session_state["header_text"] = ""
+    # Get the current value, prioritizing the temp value if it exists (from template load)
+    header_text_value = st.session_state.get("_header_text_temp", st.session_state.get("header_text", ""))
+    if "_header_text_temp" in st.session_state:
+        # Template was loaded, update the value and increment counter
+        st.session_state["header_text"] = header_text_value
+        st.session_state["header_text_reinit_counter"] = st.session_state.get("header_text_reinit_counter", 0) + 1
+        del st.session_state["_header_text_temp"]
+    # st_quill will use the value from session_state via key=
+    # Use a unique key that includes the counter to force reinitialization
     header_text = st_quill(
-        value=st.session_state["header_text"],
+        value=st.session_state.get("header_text", ""),
         placeholder="e.g., Enter header text here...",
         html=True,  # Return HTML content
-        key="header_text",
+        key=f"header_text_{st.session_state.get('header_text_reinit_counter', 0)}",
         toolbar=[
             [{'size': ['small', False, 'large', 'huge']}],
             ['bold', 'italic', 'underline', 'strike'],
@@ -1869,13 +1882,28 @@ def render_layer_form(layer_number: int) -> Dict:
     st.markdown(f"**Main Content - Layer {layer_number}**")
     # Ensure the value is in session_state before creating the widget
     content_key = f"content_{layer_number}"
+    # Use a counter to force widget reinitialization when template is loaded
+    reinit_counter_key = f"{content_key}_reinit_counter"
+    if reinit_counter_key not in st.session_state:
+        st.session_state[reinit_counter_key] = 0
+    # IMPORTANT: Initialize or ensure value exists BEFORE widget creation
     if content_key not in st.session_state:
         st.session_state[content_key] = ""
+    # Get the current value, prioritizing the temp value if it exists (from template load)
+    temp_key = f"_{content_key}_temp"
+    content_value = st.session_state.get(temp_key, st.session_state.get(content_key, ""))
+    if temp_key in st.session_state:
+        # Template was loaded, update the value and increment counter
+        st.session_state[content_key] = content_value
+        st.session_state[reinit_counter_key] = st.session_state.get(reinit_counter_key, 0) + 1
+        del st.session_state[temp_key]
+    # st_quill will use the value from session_state via key=
+    # Use a unique key that includes the counter to force reinitialization
     content = st_quill(
-        value=st.session_state[content_key],
+        value=st.session_state.get(content_key, ""),
         placeholder="e.g., Enter main content here...",
         html=True,  # Return HTML content
-        key=content_key,
+        key=f"{content_key}_{st.session_state.get(reinit_counter_key, 0)}",
         toolbar=[
             [{'header': [1, 2, 3, False]}],
             ['bold', 'italic', 'underline', 'strike'],
@@ -2127,7 +2155,16 @@ def apply_template_to_session_state(template_data: dict):
     if 'header_title' in header_config:
         st.session_state['header_title'] = str(header_config['header_title']) if header_config['header_title'] is not None else ""
     if 'header_text' in header_config:
-        st.session_state['header_text'] = str(header_config['header_text']) if header_config['header_text'] is not None else ""
+        # Force widget reinitialization by using a unique key suffix
+        # This ensures the widget gets the new value after template load
+        header_text_value = str(header_config['header_text']) if header_config['header_text'] is not None else ""
+        # Store in a temporary key first, then copy to the actual key
+        st.session_state['_header_text_temp'] = header_text_value
+        # Clear the widget state by deleting the key
+        if 'header_text' in st.session_state:
+            del st.session_state['header_text']
+        # Now set the new value
+        st.session_state['header_text'] = header_text_value
     if 'header_title_color' in header_config:
         st.session_state['header_title_color'] = str(header_config['title_color']) if header_config.get('title_color') is not None else "#000000"
     if 'header_title_font_size' in header_config:
@@ -2148,7 +2185,17 @@ def apply_template_to_session_state(template_data: dict):
         if 'subtitle2' in layer:
             st.session_state[f'subtitle2_{i}'] = layer['subtitle2']
         if 'content' in layer:
-            st.session_state[f'content_{i}'] = layer['content']
+            # Force widget reinitialization by using a unique key suffix
+            # This ensures the widget gets the new value after template load
+            content_key = f'content_{i}'
+            content_value = str(layer['content']) if layer['content'] is not None else ""
+            # Store in a temporary key first, then copy to the actual key
+            st.session_state[f'_{content_key}_temp'] = content_value
+            # Clear the widget state by deleting the key
+            if content_key in st.session_state:
+                del st.session_state[content_key]
+            # Now set the new value
+            st.session_state[content_key] = content_value
         # Set image source based on what's available
         # Check both URL and base64, URL takes precedence if both exist and are non-empty
         layer_image_url_value = layer.get('image_url')
