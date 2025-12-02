@@ -993,24 +993,28 @@ def render_header_config(email_subject: str) -> Dict:
     
     # Second row: Image Source
     image_source_options = ["External URL", "Upload Image (Base64)"]
-    image_source_index = st.session_state.get("header_image_source", 0)
-    # Ensure index is an integer
-    try:
-        image_source_index = int(image_source_index) if image_source_index is not None else 0
-    except (ValueError, TypeError):
-        image_source_index = 0
-    # Ensure index is within valid range
-    image_source_index = max(0, min(1, image_source_index))
-    # Use temporary key to avoid serialization issues
+    raw_value = st.session_state.get("header_image_source", "External URL")
+    # Handle both old format (int index) and new format (option string)
+    # IMPORTANT: Set the value in session_state BEFORE creating the widget
+    if isinstance(raw_value, int):
+        # Old format: convert index to option string
+        image_source_value = image_source_options[max(0, min(1, raw_value))]
+        st.session_state["header_image_source"] = image_source_value
+    elif raw_value not in image_source_options:
+        # Invalid value, default to first option
+        image_source_value = image_source_options[0]
+        st.session_state["header_image_source"] = image_source_value
+    else:
+        # Value is already a valid option string, ensure it's set in session_state
+        if "header_image_source" not in st.session_state or st.session_state["header_image_source"] != raw_value:
+            st.session_state["header_image_source"] = raw_value
+    # Use the session_state key directly - Streamlit will use the value from session_state
     image_source = st.radio(
         "Image Source",
         options=image_source_options,
-        index=image_source_index,
-        key="header_image_source_radio",
+        key="header_image_source",
         help="Choose how to provide the header image"
     )
-    # Update session_state with the selected index
-    st.session_state["header_image_source"] = image_source_options.index(image_source)
     
     # Third row: Header Image URL | Image Width (px)
     col_row3_1, col_row3_2 = st.columns(2)
@@ -1018,6 +1022,9 @@ def render_header_config(email_subject: str) -> Dict:
     header_image_url = None
     
     with col_row3_1:
+        # Always check for existing base64 image in session_state (from loaded template)
+        existing_base64 = st.session_state.get("header_image_base64")
+        
         if image_source == "External URL":
             header_image_url = st.text_input(
                 "Header Image URL",
@@ -1025,11 +1032,20 @@ def render_header_config(email_subject: str) -> Dict:
                 key="header_image_url",
                 help="Enter the URL of the image from an external server"
             )
+            # If URL is empty but we have base64, use base64 instead
+            if not header_image_url and existing_base64:
+                header_image_base64 = existing_base64
+                header_image_url = None
+            else:
+                header_image_base64 = None
         else:
-            # Check if there's a base64 image in session_state (from loaded template)
-            existing_base64 = st.session_state.get("header_image_base64")
             if existing_base64:
-                st.info("ℹ️ Imagen cargada desde plantilla guardada")
+                st.info("ℹ️ Image loaded from saved template")
+                # Display the loaded image
+                try:
+                    st.image(existing_base64, caption="Header Image (from template)", use_container_width=True)
+                except Exception as e:
+                    st.warning(f"No se pudo mostrar la imagen: {str(e)}")
                 header_image_base64 = existing_base64
             else:
                 header_image_base64 = None
@@ -1190,24 +1206,29 @@ def render_footer_config() -> Dict:
     
     # Second row: Image Source (full width)
     image_source_options = ["External URL", "Upload Image (Base64)"]
-    image_source_index = st.session_state.get("footer_image_source", 0)
-    # Ensure index is an integer
-    try:
-        image_source_index = int(image_source_index) if image_source_index is not None else 0
-    except (ValueError, TypeError):
-        image_source_index = 0
-    # Ensure index is within valid range
-    image_source_index = max(0, min(1, image_source_index))
-    # Use temporary key to avoid serialization issues
+    raw_value = st.session_state.get("footer_image_source", "External URL")
+    # Handle both old format (int index) and new format (option string)
+    # IMPORTANT: Set the value in session_state BEFORE creating the widget
+    footer_key = "footer_image_source"
+    if isinstance(raw_value, int):
+        # Old format: convert index to option string
+        image_source_value = image_source_options[max(0, min(1, raw_value))]
+        st.session_state[footer_key] = image_source_value
+    elif raw_value not in image_source_options:
+        # Invalid value, default to first option
+        image_source_value = image_source_options[0]
+        st.session_state[footer_key] = image_source_value
+    else:
+        # Value is already a valid option string, ensure it's set in session_state
+        if footer_key not in st.session_state or st.session_state[footer_key] != raw_value:
+            st.session_state[footer_key] = raw_value
+    # Use the session_state key directly - Streamlit will use the value from session_state
     image_source = st.radio(
         "Image Source",
         options=image_source_options,
-        index=image_source_index,
-        key="footer_image_source_radio",
+        key=footer_key,
         help="Choose how to provide the footer image"
     )
-    # Update session_state with the selected index
-    st.session_state["footer_image_source"] = image_source_options.index(image_source)
     
     # Second row: Footer Image URL | Image Width (px)
     col_row2_1, col_row2_2 = st.columns(2)
@@ -1215,6 +1236,9 @@ def render_footer_config() -> Dict:
     footer_image_url = None
     
     with col_row2_1:
+        # Always check for existing base64 image in session_state (from loaded template)
+        existing_base64 = st.session_state.get("footer_image_base64")
+        
         if image_source == "External URL":
             footer_image_url = st.text_input(
                 "Footer Image URL",
@@ -1222,11 +1246,20 @@ def render_footer_config() -> Dict:
                 key="footer_image_url",
                 help="Enter the URL of the image from an external server"
             )
+            # If URL is empty but we have base64, use base64 instead
+            if not footer_image_url and existing_base64:
+                footer_image_base64 = existing_base64
+                footer_image_url = None
+            else:
+                footer_image_base64 = None
         else:
-            # Check if there's a base64 image in session_state (from loaded template)
-            existing_base64 = st.session_state.get("footer_image_base64")
             if existing_base64:
-                st.info("ℹ️ Imagen cargada desde plantilla guardada")
+                st.info("ℹ️ Image loaded from saved template")
+                # Display the loaded image
+                try:
+                    st.image(existing_base64, caption="Footer Image (from template)", use_container_width=True)
+                except Exception as e:
+                    st.warning(f"No se pudo mostrar la imagen: {str(e)}")
                 footer_image_base64 = existing_base64
             else:
                 footer_image_base64 = None
@@ -1442,6 +1475,15 @@ def render_footer_config() -> Dict:
             help="Facebook page URL"
         )
         if social_media_type == "Images":
+            # Check if there's a base64 image in session_state (from loaded template)
+            existing_facebook_base64 = st.session_state.get("footer_facebook_image_base64")
+            if existing_facebook_base64:
+                st.info("ℹ️ Facebook image loaded from template")
+                try:
+                    st.image(existing_facebook_base64, caption="Facebook Icon (from template)", width=50)
+                except Exception as e:
+                    st.warning(f"No se pudo mostrar la imagen: {str(e)}")
+            
             facebook_image = st.file_uploader(
                 "Facebook Icon",
                 type=['jpg', 'jpeg', 'png', 'JPG', 'JPEG', 'PNG', 'svg', 'SVG'],
@@ -1459,6 +1501,15 @@ def render_footer_config() -> Dict:
             help="LinkedIn page URL"
         )
         if social_media_type == "Images":
+            # Check if there's a base64 image in session_state (from loaded template)
+            existing_linkedin_base64 = st.session_state.get("footer_linkedin_image_base64")
+            if existing_linkedin_base64:
+                st.info("ℹ️ LinkedIn image loaded from template")
+                try:
+                    st.image(existing_linkedin_base64, caption="LinkedIn Icon (from template)", width=50)
+                except Exception as e:
+                    st.warning(f"No se pudo mostrar la imagen: {str(e)}")
+            
             linkedin_image = st.file_uploader(
                 "LinkedIn Icon",
                 type=['jpg', 'jpeg', 'png', 'JPG', 'JPEG', 'PNG', 'svg', 'SVG'],
@@ -1478,6 +1529,15 @@ def render_footer_config() -> Dict:
             help="Xing page URL"
         )
         if social_media_type == "Images":
+            # Check if there's a base64 image in session_state (from loaded template)
+            existing_xing_base64 = st.session_state.get("footer_xing_image_base64")
+            if existing_xing_base64:
+                st.info("ℹ️ Xing image loaded from template")
+                try:
+                    st.image(existing_xing_base64, caption="Xing Icon (from template)", width=50)
+                except Exception as e:
+                    st.warning(f"No se pudo mostrar la imagen: {str(e)}")
+            
             xing_image = st.file_uploader(
                 "Xing Icon",
                 type=['jpg', 'jpeg', 'png', 'JPG', 'JPEG', 'PNG', 'svg', 'SVG'],
@@ -1495,6 +1555,15 @@ def render_footer_config() -> Dict:
             help="Instagram page URL"
         )
         if social_media_type == "Images":
+            # Check if there's a base64 image in session_state (from loaded template)
+            existing_instagram_base64 = st.session_state.get("footer_instagram_image_base64")
+            if existing_instagram_base64:
+                st.info("ℹ️ Instagram image loaded from template")
+                try:
+                    st.image(existing_instagram_base64, caption="Instagram Icon (from template)", width=50)
+                except Exception as e:
+                    st.warning(f"No se pudo mostrar la imagen: {str(e)}")
+            
             instagram_image = st.file_uploader(
                 "Instagram Icon",
                 type=['jpg', 'jpeg', 'png', 'JPG', 'JPEG', 'PNG', 'svg', 'SVG'],
@@ -1505,20 +1574,45 @@ def render_footer_config() -> Dict:
             instagram_image = None
     
     # Process social media images to Base64
+    # New uploads take precedence, otherwise use images from session_state (loaded from template)
     facebook_image_base64 = None
     linkedin_image_base64 = None
     xing_image_base64 = None
     instagram_image_base64 = None
     
     if social_media_type == "Images":
+        # Process new uploads (they take precedence)
         if facebook_image:
             facebook_image_base64 = ImageProcessor.convert_to_base64(facebook_image)
+            # Update session_state with new image
+            st.session_state["footer_facebook_image_base64"] = facebook_image_base64
+        elif st.session_state.get("footer_facebook_image_base64"):
+            # Use existing image from session_state (loaded from template)
+            facebook_image_base64 = st.session_state.get("footer_facebook_image_base64")
+        
         if linkedin_image:
             linkedin_image_base64 = ImageProcessor.convert_to_base64(linkedin_image)
+            # Update session_state with new image
+            st.session_state["footer_linkedin_image_base64"] = linkedin_image_base64
+        elif st.session_state.get("footer_linkedin_image_base64"):
+            # Use existing image from session_state (loaded from template)
+            linkedin_image_base64 = st.session_state.get("footer_linkedin_image_base64")
+        
         if xing_image:
             xing_image_base64 = ImageProcessor.convert_to_base64(xing_image)
+            # Update session_state with new image
+            st.session_state["footer_xing_image_base64"] = xing_image_base64
+        elif st.session_state.get("footer_xing_image_base64"):
+            # Use existing image from session_state (loaded from template)
+            xing_image_base64 = st.session_state.get("footer_xing_image_base64")
+        
         if instagram_image:
             instagram_image_base64 = ImageProcessor.convert_to_base64(instagram_image)
+            # Update session_state with new image
+            st.session_state["footer_instagram_image_base64"] = instagram_image_base64
+        elif st.session_state.get("footer_instagram_image_base64"):
+            # Use existing image from session_state (loaded from template)
+            instagram_image_base64 = st.session_state.get("footer_instagram_image_base64")
     
     return {
         'footer_image_base64': footer_image_base64,
@@ -1793,24 +1887,29 @@ def render_layer_form(layer_number: int) -> Dict:
     
     # Image source selection
     image_source_options = ["External URL", "Upload Image (Base64)"]
-    image_source_index = st.session_state.get(f"image_source_{layer_number}", 0)
-    # Ensure index is an integer
-    try:
-        image_source_index = int(image_source_index) if image_source_index is not None else 0
-    except (ValueError, TypeError):
-        image_source_index = 0
-    # Ensure index is within valid range
-    image_source_index = max(0, min(1, image_source_index))
-    # Use temporary key to avoid serialization issues
+    raw_value = st.session_state.get(f"image_source_{layer_number}", "External URL")
+    # Handle both old format (int index) and new format (option string)
+    # IMPORTANT: Set the value in session_state BEFORE creating the widget
+    layer_key = f"image_source_{layer_number}"
+    if isinstance(raw_value, int):
+        # Old format: convert index to option string
+        image_source_value = image_source_options[max(0, min(1, raw_value))]
+        st.session_state[layer_key] = image_source_value
+    elif raw_value not in image_source_options:
+        # Invalid value, default to first option
+        image_source_value = image_source_options[0]
+        st.session_state[layer_key] = image_source_value
+    else:
+        # Value is already a valid option string, ensure it's set in session_state
+        if layer_key not in st.session_state or st.session_state[layer_key] != raw_value:
+            st.session_state[layer_key] = raw_value
+    # Use the session_state key directly - Streamlit will use the value from session_state
     image_source = st.radio(
         f"Image Source - Layer {layer_number}",
         options=image_source_options,
-        index=image_source_index,
-        key=f"image_source_radio_{layer_number}",
+        key=layer_key,
         help="Choose how to provide the image"
     )
-    # Update session_state with the selected index
-    st.session_state[f"image_source_{layer_number}"] = image_source_options.index(image_source)
     
     col_img1, col_img2 = st.columns(2)
     
@@ -1818,6 +1917,9 @@ def render_layer_form(layer_number: int) -> Dict:
     image_url = None
     
     with col_img1:
+        # Always check for existing base64 image in session_state (from loaded template)
+        existing_base64 = st.session_state.get(f"image_base64_{layer_number}")
+        
         if image_source == "External URL":
             image_url = st.text_input(
                 f"Image URL - Layer {layer_number}",
@@ -1825,11 +1927,20 @@ def render_layer_form(layer_number: int) -> Dict:
                 key=f"image_url_{layer_number}",
                 help="Enter the URL of the image from an external server"
             )
+            # If URL is empty but we have base64, use base64 instead
+            if not image_url and existing_base64:
+                image_base64 = existing_base64
+                image_url = None
+            else:
+                image_base64 = None
         else:
-            # Check if there's a base64 image in session_state (from loaded template)
-            existing_base64 = st.session_state.get(f"image_base64_{layer_number}")
             if existing_base64:
-                st.info(f"ℹ️ Imagen cargada desde plantilla guardada (Layer {layer_number})")
+                st.info(f"ℹ️ Image loaded from saved template (Layer {layer_number})")
+                # Display the loaded image
+                try:
+                    st.image(existing_base64, caption=f"Layer {layer_number} Image (from template)", use_container_width=True)
+                except Exception as e:
+                    st.warning(f"No se pudo mostrar la imagen: {str(e)}")
                 image_base64 = existing_base64
             else:
                 image_base64 = None
@@ -1973,12 +2084,19 @@ def apply_template_to_session_state(template_data: dict):
     if 'header_bg_color' in header_config:
         st.session_state['header_bg_color'] = header_config['header_bg_color']
     # Set image source based on what's available
-    if 'header_image_url' in header_config and header_config.get('header_image_url'):
-        st.session_state['header_image_url'] = header_config['header_image_url']
-        st.session_state['header_image_source'] = 0  # External URL
-    elif 'header_image_base64' in header_config and header_config.get('header_image_base64'):
-        st.session_state['header_image_base64'] = header_config['header_image_base64']
-        st.session_state['header_image_source'] = 1  # Upload Image (Base64)
+    # Check both URL and base64, URL takes precedence if both exist and are non-empty
+    header_image_url_value = header_config.get('header_image_url')
+    header_image_base64_value = header_config.get('header_image_base64')
+    
+    # Check if URL exists and is not empty/null
+    if header_image_url_value and str(header_image_url_value).strip():
+        st.session_state['header_image_url'] = str(header_image_url_value).strip()
+        st.session_state['header_image_source'] = "External URL"  # Store option string, not index
+    # Check if base64 exists and is not empty/null
+    elif header_image_base64_value and str(header_image_base64_value).strip():
+        st.session_state['header_image_base64'] = str(header_image_base64_value).strip()
+        st.session_state['header_image_source'] = "Upload Image (Base64)"  # Store option string, not index
+    # If neither exists, don't set image_source (will default to 0)
     if 'image_width' in header_config:
         st.session_state['header_image_width'] = int(header_config['image_width'])
     if 'header_title' in header_config:
@@ -2007,12 +2125,19 @@ def apply_template_to_session_state(template_data: dict):
         if 'content' in layer:
             st.session_state[f'content_{i}'] = layer['content']
         # Set image source based on what's available
-        if 'image_url' in layer and layer.get('image_url'):
-            st.session_state[f'image_url_{i}'] = layer['image_url']
-            st.session_state[f'image_source_{i}'] = 0  # External URL
-        elif 'image_base64' in layer and layer.get('image_base64'):
-            st.session_state[f'image_base64_{i}'] = layer['image_base64']
-            st.session_state[f'image_source_{i}'] = 1  # Upload Image (Base64)
+        # Check both URL and base64, URL takes precedence if both exist and are non-empty
+        layer_image_url_value = layer.get('image_url')
+        layer_image_base64_value = layer.get('image_base64')
+        
+        # Check if URL exists and is not empty/null
+        if layer_image_url_value and str(layer_image_url_value).strip():
+            st.session_state[f'image_url_{i}'] = str(layer_image_url_value).strip()
+            st.session_state[f'image_source_{i}'] = "External URL"  # Store option string, not index
+        # Check if base64 exists and is not empty/null
+        elif layer_image_base64_value and str(layer_image_base64_value).strip():
+            st.session_state[f'image_base64_{i}'] = str(layer_image_base64_value).strip()
+            st.session_state[f'image_source_{i}'] = "Upload Image (Base64)"  # Store option string, not index
+        # If neither exists, don't set image_source (will default to 0)
         if 'image_alignment' in layer:
             alignment_index = 0 if str(layer['image_alignment']).lower() == 'left' else 1
             st.session_state[f'alignment_{i}'] = int(alignment_index)
@@ -2049,12 +2174,19 @@ def apply_template_to_session_state(template_data: dict):
     if 'footer_bg_color' in footer_config:
         st.session_state['footer_bg_color'] = footer_config['footer_bg_color']
     # Set footer image source based on what's available
-    if 'footer_image_url' in footer_config and footer_config.get('footer_image_url'):
-        st.session_state['footer_image_url'] = footer_config['footer_image_url']
-        st.session_state['footer_image_source'] = 0  # External URL
-    elif 'footer_image_base64' in footer_config and footer_config.get('footer_image_base64'):
-        st.session_state['footer_image_base64'] = footer_config['footer_image_base64']
-        st.session_state['footer_image_source'] = 1  # Upload Image (Base64)
+    # Check both URL and base64, URL takes precedence if both exist and are non-empty
+    footer_image_url_value = footer_config.get('footer_image_url')
+    footer_image_base64_value = footer_config.get('footer_image_base64')
+    
+    # Check if URL exists and is not empty/null
+    if footer_image_url_value and str(footer_image_url_value).strip():
+        st.session_state['footer_image_url'] = str(footer_image_url_value).strip()
+        st.session_state['footer_image_source'] = "External URL"  # Store option string, not index
+    # Check if base64 exists and is not empty/null
+    elif footer_image_base64_value and str(footer_image_base64_value).strip():
+        st.session_state['footer_image_base64'] = str(footer_image_base64_value).strip()
+        st.session_state['footer_image_source'] = "Upload Image (Base64)"  # Store option string, not index
+    # If neither exists, don't set image_source (will default to 0)
     if 'image_width' in footer_config:
         st.session_state['footer_image_width'] = int(footer_config['image_width'])
     if 'footer_alignment' in footer_config:
@@ -2101,12 +2233,20 @@ def apply_template_to_session_state(template_data: dict):
         st.session_state['footer_social_image_width'] = int(footer_config['social_image_width'])
     if 'facebook_url' in footer_config:
         st.session_state['footer_facebook'] = footer_config['facebook_url']
+    if 'facebook_image_base64' in footer_config and footer_config.get('facebook_image_base64'):
+        st.session_state['footer_facebook_image_base64'] = footer_config['facebook_image_base64']
     if 'linkedin_url' in footer_config:
         st.session_state['footer_linkedin'] = footer_config['linkedin_url']
+    if 'linkedin_image_base64' in footer_config and footer_config.get('linkedin_image_base64'):
+        st.session_state['footer_linkedin_image_base64'] = footer_config['linkedin_image_base64']
     if 'xing_url' in footer_config:
         st.session_state['footer_xing'] = footer_config['xing_url']
+    if 'xing_image_base64' in footer_config and footer_config.get('xing_image_base64'):
+        st.session_state['footer_xing_image_base64'] = footer_config['xing_image_base64']
     if 'instagram_url' in footer_config:
         st.session_state['footer_instagram'] = footer_config['instagram_url']
+    if 'instagram_image_base64' in footer_config and footer_config.get('instagram_image_base64'):
+        st.session_state['footer_instagram_image_base64'] = footer_config['instagram_image_base64']
     
     # Apply subscription config
     if subscription_config:
