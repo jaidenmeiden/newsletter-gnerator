@@ -1086,6 +1086,12 @@ def render_header_config(email_subject: str) -> Dict:
                 key="header_image_url",
                 help="Enter the URL of the image from an external server"
             )
+            # Display image preview if URL is provided
+            if header_image_url and header_image_url.strip():
+                try:
+                    st.image(header_image_url, width=None, use_container_width=False)
+                except Exception as e:
+                    st.warning(f"Could not display the image: {str(e)}")
             # If URL is empty but we have base64, use base64 instead
             if not header_image_url and existing_base64:
                 header_image_base64 = existing_base64
@@ -1328,6 +1334,12 @@ def render_footer_config() -> Dict:
                 key="footer_image_url",
                 help="Enter the URL of the image from an external server"
             )
+            # Display image preview if URL is provided
+            if footer_image_url and footer_image_url.strip():
+                try:
+                    st.image(footer_image_url, width=None, use_container_width=False)
+                except Exception as e:
+                    st.warning(f"Could not display the image: {str(e)}")
             # If URL is empty but we have base64, use base64 instead
             if not footer_image_url and existing_base64:
                 footer_image_base64 = existing_base64
@@ -2084,6 +2096,12 @@ def render_layer_form(layer_number: int) -> Dict:
                 key=f"image_url_{layer_number}",
                 help="Enter the URL of the image from an external server"
             )
+            # Display image preview if URL is provided
+            if image_url and image_url.strip():
+                try:
+                    st.image(image_url, width=None, use_container_width=False)
+                except Exception as e:
+                    st.warning(f"Could not display the image: {str(e)}")
             # If URL is empty but we have base64, use base64 instead
             if not image_url and existing_base64:
                 image_base64 = existing_base64
