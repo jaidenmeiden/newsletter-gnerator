@@ -634,6 +634,7 @@ class NewsletterGenerator:
         footer_bg_color = footer_config.get('footer_bg_color', '#ffffff')
         footer_image_base64 = footer_config.get('footer_image_base64')
         footer_image_url = footer_config.get('footer_image_url')
+        footer_image_position = footer_config.get('footer_image_position', 'Above Text')
         image_width = footer_config.get('image_width', 600)
         footer_alignment = footer_config.get('footer_alignment', 'left').lower()
         
@@ -671,17 +672,13 @@ class NewsletterGenerator:
         address_weight = '700' if address_bold else '400'
         directors_weight = '700' if directors_bold else '400'
         
-        # Footer container with alignment
-        html_parts.append('<tr>')
-        html_parts.append(f'<td style="padding: 30px 20px; background-color: {footer_bg_color}; {align_style}">')
-        
-        # Image section (if provided)
-        if image_src:
+        # Helper to append image respecting link
+        def _append_footer_image():
+            if not image_src:
+                return
             html_parts.append('<div style="margin-bottom: 20px;">')
-            # Check if footer image should be a link
             footer_image_link_url = footer_config.get('footer_image_link_url', '')
             if footer_image_link_url and footer_image_link_url.strip():
-                # Wrap image in a link
                 html_parts.append(
                     f'<a href="{footer_image_link_url}" target="_blank" rel="noopener noreferrer" style="text-decoration: none; display: inline-block;">'
                 )
@@ -692,6 +689,14 @@ class NewsletterGenerator:
             if footer_image_link_url and footer_image_link_url.strip():
                 html_parts.append('</a>')
             html_parts.append('</div>')
+        
+        # Footer container with alignment
+        html_parts.append('<tr>')
+        html_parts.append(f'<td style="padding: 30px 20px; background-color: {footer_bg_color}; {align_style}">')
+        
+        # Image before text
+        if footer_image_position == 'Above Text':
+            _append_footer_image()
         
         # Company information
         if company_name or address or directors:
@@ -715,6 +720,10 @@ class NewsletterGenerator:
                 )
             
             html_parts.append('</div>')
+        
+        # Image after text (but before social media)
+        if footer_image_position == 'After Text':
+            _append_footer_image()
         
         # Social media links
         social_media_type = footer_config.get('social_media_type', 'URLs Only')
@@ -1363,6 +1372,27 @@ def render_footer_config() -> Dict:
             help="Width of the footer image in pixels"
         )
     
+    # Position of the footer image relative to text
+    footer_image_position_options = ["Above Text", "After Text"]
+    raw_footer_image_position = st.session_state.get("footer_image_position", "Above Text")
+    if isinstance(raw_footer_image_position, int):
+        normalized_footer_image_position = footer_image_position_options[max(0, min(1, raw_footer_image_position))]
+    else:
+        footer_pos_map = {
+            "above text": "Above Text",
+            "after text": "After Text"
+        }
+        normalized_footer_image_position = footer_pos_map.get(str(raw_footer_image_position).strip().lower(), "Above Text")
+    # Ensure session_state is set before widget creation
+    st.session_state["footer_image_position"] = normalized_footer_image_position
+    footer_image_position = st.radio(
+        "Footer Image Position",
+        options=footer_image_position_options,
+        index=footer_image_position_options.index(normalized_footer_image_position),
+        key="footer_image_position",
+        help="Choose if the footer image goes above the text or after the text (always before Social Media links)"
+    )
+    
     # Third row: Company Name with styling
     col_cn_1, col_cn_2, col_cn_3, col_cn_4 = st.columns([3, 1, 1, 1])
     with col_cn_1:
@@ -1719,6 +1749,7 @@ def render_footer_config() -> Dict:
         'address_color': address_color,
         'address_size': address_size,
         'address_bold': address_bold,
+        'footer_image_position': footer_image_position,
         'directors_color': directors_color,
         'directors_size': directors_size,
         'directors_bold': directors_bold,
@@ -2311,6 +2342,14 @@ def apply_template_to_session_state(template_data: dict):
     # Check both URL and base64, URL takes precedence if both exist and are non-empty
     footer_image_url_value = footer_config.get('footer_image_url')
     footer_image_base64_value = footer_config.get('footer_image_base64')
+    if 'footer_image_position' in footer_config:
+        footer_pos_map = {
+            "above text": "Above Text",
+            "after text": "After Text"
+        }
+        raw_footer_pos = footer_config['footer_image_position']
+        normalized_footer_pos = footer_pos_map.get(str(raw_footer_pos).strip().lower(), "Above Text") if raw_footer_pos is not None else "Above Text"
+        st.session_state['footer_image_position'] = normalized_footer_pos
     
     # Check if URL exists and is not empty/null
     if footer_image_url_value and str(footer_image_url_value).strip():
