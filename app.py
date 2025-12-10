@@ -5,8 +5,7 @@ A web application for generating responsive HTML newsletters with dynamic conten
 
 import base64
 import io
-import json
-import os
+import time
 from typing import Dict, List, Optional
 
 import streamlit as st
@@ -2526,18 +2525,42 @@ def main():
     st.markdown("Create responsive HTML newsletters with dynamic content layers")
     
     # Show template save/load/delete success message at the top if available
+    # Messages auto-disappear after 10 seconds
+    current_time = time.time()
+    
     if st.session_state.get('template_save_success_message'):
-        st.success(st.session_state['template_save_success_message'])
-        # Clear the message after showing it
-        del st.session_state['template_save_success_message']
+        message_time = st.session_state.get('template_save_success_message_time', current_time)
+        if current_time - message_time < 10:
+            st.success(st.session_state['template_save_success_message'])
+        else:
+            # Message expired, remove it
+            del st.session_state['template_save_success_message']
+            if 'template_save_success_message_time' in st.session_state:
+                del st.session_state['template_save_success_message_time']
+    
     if st.session_state.get('template_load_success_message'):
-        st.success(st.session_state['template_load_success_message'])
-        # Clear the message after showing it
-        del st.session_state['template_load_success_message']
+        message_time = st.session_state.get('template_load_success_message_time', current_time)
+        if current_time - message_time < 10:
+            st.success(st.session_state['template_load_success_message'])
+        else:
+            # Message expired, remove it
+            del st.session_state['template_load_success_message']
+            if 'template_load_success_message_time' in st.session_state:
+                del st.session_state['template_load_success_message_time']
+    
     if st.session_state.get('template_delete_success_message'):
-        st.success(st.session_state['template_delete_success_message'])
-        # Clear the message after showing it
-        del st.session_state['template_delete_success_message']
+        message_time = st.session_state.get('template_delete_success_message_time', current_time)
+        if current_time - message_time < 10:
+            st.success(st.session_state['template_delete_success_message'])
+        else:
+            # Message expired, remove it
+            del st.session_state['template_delete_success_message']
+            if 'template_delete_success_message_time' in st.session_state:
+                del st.session_state['template_delete_success_message_time']
+    
+    # Note: Messages will automatically disappear after 10 seconds on the next user interaction
+    # This is the standard Streamlit behavior - the page re-renders when user interacts with any widget
+    # The messages are already set to expire after 10 seconds and will be removed on next render
     
     # Template Management Section
     st.header("💾 Template Management")
@@ -2586,6 +2609,7 @@ def main():
                         apply_template_to_session_state(template_data)
                         # Store success message to show at the top
                         st.session_state['template_load_success_message'] = f"✅ Template '{selected_template}' loaded successfully!"
+                        st.session_state['template_load_success_message_time'] = time.time()
                         # Rerun to show the message at the top
                         st.rerun()
                     else:
@@ -2618,6 +2642,7 @@ def main():
                             if success:
                                 # Store success message to show at the top
                                 st.session_state['template_delete_success_message'] = f"🗑️ Template '{selected_template}' deleted successfully!"
+                                st.session_state['template_delete_success_message_time'] = time.time()
                                 # Clear confirmation flags
                                 st.session_state['show_delete_confirmation'] = False
                                 st.session_state['template_to_delete'] = None
@@ -2720,6 +2745,7 @@ def main():
             if success:
                 # Store success message to show at the top
                 st.session_state['template_save_success_message'] = f"✅ Template '{template_name}' saved successfully!"
+                st.session_state['template_save_success_message_time'] = time.time()
                 # Rerun to show the message at the top
                 st.rerun()
             # Clear the flag
