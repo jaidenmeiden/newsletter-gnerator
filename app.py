@@ -2381,7 +2381,9 @@ def apply_template_to_session_state(template_data: dict):
     if 'social_label_bold' in footer_config:
         st.session_state['footer_social_label_bold'] = bool(footer_config['social_label_bold'])
     if 'social_image_width' in footer_config:
-        st.session_state['footer_social_image_width'] = int(footer_config['social_image_width'])
+        width = footer_config['social_image_width']
+        if width is not None:
+            st.session_state['footer_social_image_width'] = int(width)
     if 'facebook_url' in footer_config:
         st.session_state['footer_facebook'] = footer_config['facebook_url']
     if 'facebook_image_base64' in footer_config and footer_config.get('facebook_image_base64'):
