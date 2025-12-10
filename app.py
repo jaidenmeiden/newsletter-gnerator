@@ -147,6 +147,27 @@ class MongoManager:
             st.error(f"Error loading template: {str(e)}")
             return None
     
+    def delete_template(self, name: str) -> bool:
+        """
+        Delete a template by name.
+        
+        Args:
+            name: Template name to delete
+            
+        Returns:
+            True if deletion successful, False otherwise
+        """
+        if self.collection is None:
+            if not self.connect():
+                return False
+        
+        try:
+            result = self.collection.delete_one({'name': name})
+            return result.deleted_count > 0
+        except Exception as e:
+            st.error(f"Error deleting template: {str(e)}")
+            return False
+    
     def close(self):
         """Close MongoDB connection."""
         if self.client:
@@ -2504,7 +2525,7 @@ def main():
     st.title("📧 Newsletter Builder")
     st.markdown("Create responsive HTML newsletters with dynamic content layers")
     
-    # Show template save/load success message at the top if available
+    # Show template save/load/delete success message at the top if available
     if st.session_state.get('template_save_success_message'):
         st.success(st.session_state['template_save_success_message'])
         # Clear the message after showing it
@@ -2513,6 +2534,10 @@ def main():
         st.success(st.session_state['template_load_success_message'])
         # Clear the message after showing it
         del st.session_state['template_load_success_message']
+    if st.session_state.get('template_delete_success_message'):
+        st.success(st.session_state['template_delete_success_message'])
+        # Clear the message after showing it
+        del st.session_state['template_delete_success_message']
     
     # Template Management Section
     st.header("💾 Template Management")
@@ -2551,16 +2576,62 @@ def main():
                 key="template_selectbox",
                 help="Choose a template to load"
             )
-            if st.button("📂 Load Template", type="secondary", use_container_width=True):
-                template_data = mongo_manager.load_template_data(selected_template)
-                if template_data:
-                    apply_template_to_session_state(template_data)
-                    # Store success message to show at the top
-                    st.session_state['template_load_success_message'] = f"✅ Template '{selected_template}' loaded successfully!"
-                    # Rerun to show the message at the top
+            
+            col_load_btn, col_delete_btn = st.columns(2)
+            
+            with col_load_btn:
+                if st.button("📂 Load Template", type="secondary", use_container_width=True):
+                    template_data = mongo_manager.load_template_data(selected_template)
+                    if template_data:
+                        apply_template_to_session_state(template_data)
+                        # Store success message to show at the top
+                        st.session_state['template_load_success_message'] = f"✅ Template '{selected_template}' loaded successfully!"
+                        # Rerun to show the message at the top
+                        st.rerun()
+                    else:
+                        st.error("⚠️ Error loading the template.")
+            
+            with col_delete_btn:
+                if st.button("🗑️ Delete Template", type="secondary", use_container_width=True):
+                    # First confirmation: Set flag to show delete confirmation dialog
+                    st.session_state['show_delete_confirmation'] = True
+                    st.session_state['template_to_delete'] = selected_template
                     st.rerun()
-                else:
-                    st.error("⚠️ Error loading the template.")
+            
+            # Show delete confirmation dialog if flag is set
+            if st.session_state.get('show_delete_confirmation', False) and st.session_state.get('template_to_delete') == selected_template:
+                st.warning(f"⚠️ You are about to delete the template: **{selected_template}**")
+                st.markdown("This action cannot be undone.")
+                
+                # Double confirmation
+                confirm_checkbox = st.checkbox(
+                    f"I confirm I want to delete '{selected_template}'",
+                    key="delete_confirmation_checkbox"
+                )
+                
+                col_confirm, col_cancel = st.columns(2)
+                
+                with col_confirm:
+                    if st.button("🗑️ Confirm Delete", type="primary", use_container_width=True, disabled=not confirm_checkbox):
+                        if confirm_checkbox:
+                            success = mongo_manager.delete_template(selected_template)
+                            if success:
+                                # Store success message to show at the top
+                                st.session_state['template_delete_success_message'] = f"🗑️ Template '{selected_template}' deleted successfully!"
+                                # Clear confirmation flags
+                                st.session_state['show_delete_confirmation'] = False
+                                st.session_state['template_to_delete'] = None
+                                # Rerun to refresh template list and show message
+                                st.rerun()
+                            else:
+                                st.error("⚠️ Error deleting the template.")
+                
+                with col_cancel:
+                    if st.button("❌ Cancel", use_container_width=True):
+                        # Clear confirmation flags
+                        st.session_state['show_delete_confirmation'] = False
+                        st.session_state['template_to_delete'] = None
+                        st.rerun()
         else:
             st.info("No templates saved yet.")
     
