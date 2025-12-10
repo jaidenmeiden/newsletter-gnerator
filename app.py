@@ -2504,11 +2504,15 @@ def main():
     st.title("📧 Newsletter Builder")
     st.markdown("Create responsive HTML newsletters with dynamic content layers")
     
-    # Show template save success message at the top if available
+    # Show template save/load success message at the top if available
     if st.session_state.get('template_save_success_message'):
         st.success(st.session_state['template_save_success_message'])
         # Clear the message after showing it
         del st.session_state['template_save_success_message']
+    if st.session_state.get('template_load_success_message'):
+        st.success(st.session_state['template_load_success_message'])
+        # Clear the message after showing it
+        del st.session_state['template_load_success_message']
     
     # Template Management Section
     st.header("💾 Template Management")
@@ -2551,7 +2555,9 @@ def main():
                 template_data = mongo_manager.load_template_data(selected_template)
                 if template_data:
                     apply_template_to_session_state(template_data)
-                    st.success(f"✅ Template '{selected_template}' loaded successfully!")
+                    # Store success message to show at the top
+                    st.session_state['template_load_success_message'] = f"✅ Template '{selected_template}' loaded successfully!"
+                    # Rerun to show the message at the top
                     st.rerun()
                 else:
                     st.error("⚠️ Error loading the template.")
