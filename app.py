@@ -1099,7 +1099,7 @@ def render_header_config(email_subject: str) -> Dict:
                 try:
                     st.image(existing_base64, width=None, use_container_width=False)
                 except Exception as e:
-                    st.warning(f"No se pudo mostrar la imagen: {str(e)}")
+                    st.warning(f"Could not display the image: {str(e)}")
                 header_image_base64 = existing_base64
             else:
                 header_image_base64 = None
@@ -1341,7 +1341,7 @@ def render_footer_config() -> Dict:
                 try:
                     st.image(existing_base64, width=None, use_container_width=False)
                 except Exception as e:
-                    st.warning(f"No se pudo mostrar la imagen: {str(e)}")
+                    st.warning(f"Could not display the image: {str(e)}")
                 footer_image_base64 = existing_base64
             else:
                 footer_image_base64 = None
@@ -1601,7 +1601,7 @@ def render_footer_config() -> Dict:
                 try:
                     st.image(existing_facebook_base64, width=50)
                 except Exception as e:
-                    st.warning(f"No se pudo mostrar la imagen: {str(e)}")
+                    st.warning(f"Could not display the image: {str(e)}")
             
             facebook_image = st.file_uploader(
                 "Facebook Icon",
@@ -1627,7 +1627,7 @@ def render_footer_config() -> Dict:
                 try:
                     st.image(existing_linkedin_base64, width=50)
                 except Exception as e:
-                    st.warning(f"No se pudo mostrar la imagen: {str(e)}")
+                    st.warning(f"Could not display the image: {str(e)}")
             
             linkedin_image = st.file_uploader(
                 "LinkedIn Icon",
@@ -1655,7 +1655,7 @@ def render_footer_config() -> Dict:
                 try:
                     st.image(existing_xing_base64, width=50)
                 except Exception as e:
-                    st.warning(f"No se pudo mostrar la imagen: {str(e)}")
+                    st.warning(f"Could not display the image: {str(e)}")
             
             xing_image = st.file_uploader(
                 "Xing Icon",
@@ -1681,7 +1681,7 @@ def render_footer_config() -> Dict:
                 try:
                     st.image(existing_instagram_base64, width=50)
                 except Exception as e:
-                    st.warning(f"No se pudo mostrar la imagen: {str(e)}")
+                    st.warning(f"Could not display the image: {str(e)}")
             
             instagram_image = st.file_uploader(
                 "Instagram Icon",
@@ -2099,7 +2099,7 @@ def render_layer_form(layer_number: int) -> Dict:
                     with col_img_left:
                         st.image(existing_base64, width=None, use_container_width=True)
                 except Exception as e:
-                    st.warning(f"No se pudo mostrar la imagen: {str(e)}")
+                    st.warning(f"Could not display the image: {str(e)}")
                 image_base64 = existing_base64
             else:
                 image_base64 = None
@@ -2486,6 +2486,12 @@ def main():
     st.title("📧 Newsletter Builder")
     st.markdown("Create responsive HTML newsletters with dynamic content layers")
     
+    # Show template save success message at the top if available
+    if st.session_state.get('template_save_success_message'):
+        st.success(st.session_state['template_save_success_message'])
+        # Clear the message after showing it
+        del st.session_state['template_save_success_message']
+    
     # Template Management Section
     st.header("💾 Template Management")
     col_save, col_load = st.columns(2)
@@ -2499,9 +2505,9 @@ def main():
             help="Enter a unique name for this template",
             placeholder="e.g., Monthly Newsletter Template"
         )
-        if st.button("💾 Guardar Plantilla", type="primary", use_container_width=True):
+        if st.button("💾 Save Template", type="primary", use_container_width=True):
             if not template_name or not template_name.strip():
-                st.error("⚠️ Por favor, ingresa un nombre para la plantilla.")
+                st.error("⚠️ Please enter a name for the template.")
             else:
                 # Get MongoDB manager
                 mongo_manager = get_mongo_manager()
@@ -2523,16 +2529,16 @@ def main():
                 key="template_selectbox",
                 help="Choose a template to load"
             )
-            if st.button("📂 Cargar Plantilla", type="secondary", use_container_width=True):
+            if st.button("📂 Load Template", type="secondary", use_container_width=True):
                 template_data = mongo_manager.load_template_data(selected_template)
                 if template_data:
                     apply_template_to_session_state(template_data)
-                    st.success(f"✅ Plantilla '{selected_template}' cargada exitosamente!")
+                    st.success(f"✅ Template '{selected_template}' loaded successfully!")
                     st.rerun()
                 else:
-                    st.error("⚠️ Error al cargar la plantilla.")
+                    st.error("⚠️ Error loading the template.")
         else:
-            st.info("No hay plantillas guardadas aún.")
+            st.info("No templates saved yet.")
     
     st.divider()
     
@@ -2617,7 +2623,10 @@ def main():
                 subscription_config=subscription_config
             )
             if success:
-                st.success(f"✅ Plantilla '{template_name}' guardada exitosamente!")
+                # Store success message to show at the top
+                st.session_state['template_save_success_message'] = f"✅ Template '{template_name}' saved successfully!"
+                # Rerun to show the message at the top
+                st.rerun()
             # Clear the flag
             st.session_state['save_template_flag'] = False
             st.session_state['template_name_to_save'] = ''
