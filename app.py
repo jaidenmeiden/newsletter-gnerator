@@ -1857,6 +1857,19 @@ def render_layer_form(layer_number: int) -> Dict:
     """
     st.subheader(f"Layer {layer_number}")
     
+    # Layer Order Configuration
+    col_order_1, col_order_2 = st.columns([1, 3])
+    with col_order_1:
+        layer_order = st.number_input(
+            f"Order",
+            min_value=1,
+            max_value=10,
+            value=st.session_state.get(f"layer_order_{layer_number}", layer_number),
+            step=1,
+            key=f"layer_order_{layer_number}",
+            help="Display order of this layer (1 = first, 2 = second, etc.)"
+        )
+    
     # External Link Configuration (first row)
     link_url = st.text_input(
         f"External Link URL - Layer {layer_number}",
@@ -2151,6 +2164,7 @@ def render_layer_form(layer_number: int) -> Dict:
         )
     
     return {
+        'order': layer_order,
         'title': title,
         'subtitle': subtitle,
         'subtitle2': subtitle2,
@@ -2271,6 +2285,8 @@ def apply_template_to_session_state(template_data: dict):
     
     # Apply layers
     for i, layer in enumerate(layers, start=1):
+        if 'order' in layer:
+            st.session_state[f'layer_order_{i}'] = int(layer['order']) if layer['order'] is not None else i
         if 'title' in layer:
             st.session_state[f'title_{i}'] = layer['title']
         if 'subtitle' in layer:
@@ -2537,6 +2553,18 @@ def main():
         layers.append(layer_data)
         st.divider()
     
+    # Validate that layer orders are unique
+    orders = [layer.get('order', i) for i, layer in enumerate(layers, start=1)]
+    duplicate_orders = [order for order in set(orders) if orders.count(order) > 1]
+    
+    if duplicate_orders:
+        st.error(f"⚠️ Newsletter cannot be generated: The layers have duplicated orders. Duplicated orders: {', '.join(map(str, sorted(duplicate_orders)))}. Please assign a unique order to each layer before generating.")
+        # Still sort layers for display, but warn user
+        layers = sorted(layers, key=lambda x: (x.get('order', 999), layers.index(x)))
+    else:
+        # Sort layers by order before generating HTML
+        layers = sorted(layers, key=lambda x: x.get('order', 999))
+    
     # Footer Configuration (in main area)
     footer_config = render_footer_config()
     st.divider()
@@ -2549,24 +2577,31 @@ def main():
     
     # Generate Newsletter button
     if st.button("🚀 Generate Newsletter", type="primary", use_container_width=True):
-        # Generate HTML
-        html_content = NewsletterGenerator.generate_html(
-            subject=config['email_subject'],
-            background_color=config['background_color'],
-            text_color=config['text_color'],
-            header_config=header_config,
-            layers=layers,
-            footer_config=footer_config,
-            subscription_config=subscription_config,
-            max_width=config['max_width'],
-            font_family=config['font_family']
-        )
+        # Validate layer orders again before generating
+        orders = [layer.get('order', i) for i, layer in enumerate(layers, start=1)]
+        duplicate_orders = [order for order in set(orders) if orders.count(order) > 1]
         
-        # Store in session state for download
-        st.session_state['newsletter_html'] = html_content
-        st.session_state['newsletter_subject'] = config['email_subject']
-        
-        st.success("✅ Newsletter generated successfully!")
+        if duplicate_orders:
+            st.error(f"⚠️ Newsletter cannot be generated: The layers have duplicated orders. Duplicated orders: {', '.join(map(str, sorted(duplicate_orders)))}. Please assign a unique order to each layer before generating.")
+        else:
+            # Generate HTML
+            html_content = NewsletterGenerator.generate_html(
+                subject=config['email_subject'],
+                background_color=config['background_color'],
+                text_color=config['text_color'],
+                header_config=header_config,
+                layers=layers,
+                footer_config=footer_config,
+                subscription_config=subscription_config,
+                max_width=config['max_width'],
+                font_family=config['font_family']
+            )
+            
+            # Store in session state for download
+            st.session_state['newsletter_html'] = html_content
+            st.session_state['newsletter_subject'] = config['email_subject']
+            
+            st.success("✅ Newsletter generated successfully!")
     
     # Handle template saving (after all data is collected)
     if st.session_state.get('save_template_flag', False):
