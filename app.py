@@ -23,113 +23,158 @@ def apply_reset_defaults():
     if not st.session_state.get('force_reset_fields'):
         return
     
-    # Template management defaults
-    st.session_state['template_selectbox'] = "🆕 Generate New Template"
-    st.session_state['loaded_template_name'] = None
-    st.session_state["template_state_mode"] = "new"
-    st.session_state["template_state_working"] = None
-    st.session_state['template_name_input'] = ""
+    default_option = "🆕 Generate New Template"
+    set_mode_new(default_option)
+    st.session_state["template_selectbox"] = default_option
+    st.session_state["pending_template_name_input"] = ""
+    st.session_state["template_name_input"] = ""
+    st.session_state["template_state_selected"] = default_option
+    # Legacy key for compatibility
+    st.session_state["loaded_template_name"] = None
     
-    # Sidebar defaults
-    st.session_state["Email Subject"] = ""
-    st.session_state["Number of Layers"] = 1
-    st.session_state["Maximum Newsletter Width (px)"] = 1000
-    st.session_state["Font Family"] = 0
-    st.session_state["Background Color"] = "#FFFFFF"
-    st.session_state["Text Color"] = "#000000"
+    def apply_defaults(mapping: Dict):
+        for k, v in mapping.items():
+            st.session_state[k] = v
     
-    # Header defaults
-    st.session_state["pre_header_text"] = ""
-    st.session_state["header_image_url"] = ""
-    st.session_state["header_image_base64"] = None
-    st.session_state["header_image_source"] = "External URL"
-    st.session_state["header_image_width"] = 600
-    st.session_state["header_title"] = ""
-    st.session_state["header_title_color"] = "#000000"
-    st.session_state["header_title_font_size"] = 28
-    st.session_state["header_title_bold"] = True
-    st.session_state["header_text"] = ""
-    st.session_state["header_text_version"] = int(time.time() * 1000)
-    # Remove any temp/load keys so the quill widget reverts to base key
-    if "_header_text_temp" in st.session_state:
-        del st.session_state["_header_text_temp"]
-    if "header_text_load_timestamp" in st.session_state:
-        del st.session_state["header_text_load_timestamp"]
-    st.session_state["header_text_color"] = "#000000"
-    st.session_state["header_text_font_size"] = 16
-    st.session_state["header_bg_color"] = "#ffffff"
+    sidebar_defaults = {
+        "Email Subject": "",
+        "Number of Layers": 1,
+        "Maximum Newsletter Width (px)": 1000,
+        "Font Family": 0,
+        "Background Color": "#FFFFFF",
+        "Text Color": "#000000",
+    }
+    apply_defaults(sidebar_defaults)
     
-    # Layer defaults (single layer by default)
-    for i in range(1, 2):
+    header_defaults = {
+        "pre_header_text": "",
+        "header_image_url": "",
+        "header_image_base64": None,
+        "header_image_source": "External URL",
+        "header_image_width": 600,
+        "header_title": "",
+        "header_title_color": "#000000",
+        "header_title_font_size": 28,
+        "header_title_bold": True,
+        "header_text": "",
+        "header_text_version": int(time.time() * 1000),
+        "header_text_color": "#000000",
+        "header_text_font_size": 16,
+        "header_bg_color": "#ffffff",
+    }
+    apply_defaults(header_defaults)
+    for k in ["_header_text_temp", "header_text_load_timestamp"]:
+        if k in st.session_state:
+            del st.session_state[k]
+    
+    # Determine how many layers to reset (clamped 1..10)
+    n_layers = st.session_state.get("Number of Layers", 1)
+    try:
+        n_layers = int(n_layers)
+    except (TypeError, ValueError):
+        n_layers = 1
+    n_layers = max(1, min(10, n_layers))
+    st.session_state["Number of Layers"] = n_layers
+    
+    layer_defaults = {
+        "order": None,  # will be set per layer
+        "link_url": "",
+        "title": "",
+        "title_color": "#000000",
+        "title_font_size": 21,
+        "title_bold": True,
+        "subtitle": "",
+        "subtitle_color": "#00925b",
+        "subtitle_font_size": 15,
+        "subtitle_bold": False,
+        "subtitle2": "",
+        "subtitle2_color": "#000000",
+        "subtitle2_font_size": 13,
+        "subtitle2_bold": False,
+        "content": "",
+        "content_color": "#000000",
+        "content_font_size": 13,
+        "image_url": "",
+        "image_base64": None,
+        "image_source": "External URL",
+        "alignment": 0,
+        "image_width": 600,
+        "padding": 0,
+    }
+    for i in range(1, n_layers + 1):
         st.session_state[f"layer_order_{i}"] = i
-        st.session_state[f"link_url_{i}"] = ""
-        st.session_state[f"title_{i}"] = ""
-        st.session_state[f"title_color_{i}"] = "#000000"
-        st.session_state[f"title_font_size_{i}"] = 21
-        st.session_state[f"title_bold_{i}"] = True
-        st.session_state[f"subtitle_{i}"] = ""
-        st.session_state[f"subtitle_color_{i}"] = "#00925b"
-        st.session_state[f"subtitle_font_size_{i}"] = 15
-        st.session_state[f"subtitle_bold_{i}"] = False
-        st.session_state[f"subtitle2_{i}"] = ""
-        st.session_state[f"subtitle2_color_{i}"] = "#000000"
-        st.session_state[f"subtitle2_font_size_{i}"] = 13
-        st.session_state[f"subtitle2_bold_{i}"] = False
-        st.session_state[f"content_{i}"] = ""
-        st.session_state[f"_content_{i}_temp"] = ""
-        st.session_state[f"content_color_{i}"] = "#000000"
-        st.session_state[f"content_font_size_{i}"] = 13
-        st.session_state[f"image_url_{i}"] = ""
-        st.session_state[f"image_base64_{i}"] = None
-        st.session_state[f"image_source_{i}"] = "External URL"
-        st.session_state[f"alignment_{i}"] = 0
-        st.session_state[f"image_width_{i}"] = 600
-        st.session_state[f"padding_{i}"] = 0
+        for field, default_val in layer_defaults.items():
+            key = f"{field}_{i}"
+            st.session_state[key] = i if field == "order" else default_val
+        # Clean temp/timestamp keys for quill content
+        for k in [f"_content_{i}_temp", f"content_{i}_load_timestamp"]:
+            if k in st.session_state:
+                del st.session_state[k]
+        # Version key to force quill reset
+        st.session_state[f"content_version_{i}"] = int(time.time() * 1000)
     
-    # Footer defaults
-    st.session_state["footer_image_url"] = ""
-    st.session_state["footer_image_base64"] = None
-    st.session_state["footer_image_width"] = 600
-    st.session_state["footer_image_position"] = "Above Text"
-    st.session_state["footer_image_source"] = "External URL"
-    st.session_state["footer_image_link_url"] = ""
-    st.session_state["footer_alignment"] = 0
-    st.session_state["footer_company_name"] = ""
-    st.session_state["footer_company_name_color"] = "#000000"
-    st.session_state["footer_company_name_size"] = 12
-    st.session_state["footer_company_name_bold"] = False
-    st.session_state["footer_address"] = ""
-    st.session_state["footer_address_color"] = "#000000"
-    st.session_state["footer_address_size"] = 12
-    st.session_state["footer_address_bold"] = False
-    st.session_state["footer_directors"] = ""
-    st.session_state["footer_directors_color"] = "#000000"
-    st.session_state["footer_directors_size"] = 12
-    st.session_state["footer_directors_bold"] = False
-    st.session_state["footer_bg_color"] = "#ffffff"
-    st.session_state["footer_social_label"] = ""
-    st.session_state["footer_social_label_color"] = "#000000"
-    st.session_state["footer_social_label_size"] = 14
-    st.session_state["footer_social_label_bold"] = True
-    st.session_state["footer_social_type"] = "URLs Only"
-    st.session_state["footer_social_image_width"] = 32
-    st.session_state["footer_facebook"] = ""
-    st.session_state["footer_facebook_image_base64"] = None
-    st.session_state["footer_linkedin"] = ""
-    st.session_state["footer_linkedin_image_base64"] = None
-    st.session_state["footer_xing"] = ""
-    st.session_state["footer_xing_image_base64"] = None
-    st.session_state["footer_instagram"] = ""
-    st.session_state["footer_instagram_image_base64"] = None
+    # Remove residual higher-layer keys if fewer layers now
+    for j in range(n_layers + 1, 11):
+        for prefix in [
+            "layer_order", "link_url", "title", "title_color", "title_font_size", "title_bold",
+            "subtitle", "subtitle_color", "subtitle_font_size", "subtitle_bold",
+            "subtitle2", "subtitle2_color", "subtitle2_font_size", "subtitle2_bold",
+            "content", "_content", "content_color", "content_font_size",
+            "image_url", "image_base64", "image_source", "alignment", "image_width", "padding",
+            "content_load_timestamp"
+        ]:
+            key = f"{prefix}_{j}" if not prefix.startswith("_content") else f"{prefix}_{j}_temp"
+            if key in st.session_state:
+                del st.session_state[key]
     
-    # Subscription defaults
-    st.session_state["company_name"] = ""
-    st.session_state["address"] = ""
-    st.session_state["copyright_text"] = ""
-    st.session_state["disclaimer_text"] = ""
-    st.session_state["unsubscribe_link"] = ""
-    st.session_state["view_online_link"] = ""
-    st.session_state["footer_color"] = "#999999"
+    footer_defaults = {
+        "footer_image_url": "",
+        "footer_image_base64": None,
+        "footer_image_width": 600,
+        "footer_image_position": "Above Text",
+        "footer_image_source": "External URL",
+        "footer_image_link_url": "",
+        "footer_alignment": 0,
+        "footer_company_name": "",
+        "footer_company_name_color": "#000000",
+        "footer_company_name_size": 12,
+        "footer_company_name_bold": False,
+        "footer_address": "",
+        "footer_address_color": "#000000",
+        "footer_address_size": 12,
+        "footer_address_bold": False,
+        "footer_directors": "",
+        "footer_directors_color": "#000000",
+        "footer_directors_size": 12,
+        "footer_directors_bold": False,
+        "footer_bg_color": "#ffffff",
+        "footer_social_label": "",
+        "footer_social_label_color": "#000000",
+        "footer_social_label_size": 14,
+        "footer_social_label_bold": True,
+        "footer_social_type": "URLs Only",
+        "footer_social_image_width": 32,
+        "footer_facebook": "",
+        "footer_facebook_image_base64": None,
+        "footer_linkedin": "",
+        "footer_linkedin_image_base64": None,
+        "footer_xing": "",
+        "footer_xing_image_base64": None,
+        "footer_instagram": "",
+        "footer_instagram_image_base64": None,
+    }
+    apply_defaults(footer_defaults)
+    
+    subscription_defaults = {
+        "company_name": "",
+        "address": "",
+        "copyright_text": "",
+        "disclaimer_text": "",
+        "unsubscribe_link": "",
+        "view_online_link": "",
+        "footer_color": "#999999",
+    }
+    apply_defaults(subscription_defaults)
     
     st.session_state['force_reset_fields'] = False
 
@@ -2240,6 +2285,7 @@ def render_layer_form(layer_number: int) -> Dict:
         value_key=content_key,
         temp_key=temp_key,
         load_ts_key=load_timestamp_key,
+        version_key=f"content_version_{layer_number}",
         placeholder="e.g., Enter main content here...",
         toolbar=[
             [{'header': [1, 2, 3, False]}],
