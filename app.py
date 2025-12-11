@@ -152,6 +152,28 @@ def show_temp_success(message_key: str, time_key: str, timeout: int = 10):
             del st.session_state[time_key]
 
 
+def normalize_choice(value, options, default):
+    """
+    Normalize a stored value to a valid choice.
+    - If int, clamp to list index.
+    - If str, match case-insensitive to provided options.
+    - Fallback to default.
+    """
+    if isinstance(value, int):
+        if not options:
+            return default
+        idx = max(0, min(len(options) - 1, value))
+        return options[idx]
+    if isinstance(value, str):
+        val_str = value.strip()
+        for opt in options:
+            if val_str.lower() == str(opt).strip().lower():
+                return opt
+    if value in options:
+        return value
+    return default
+
+
 class MongoManager:
     """Manages MongoDB connection and operations for newsletter templates."""
     
@@ -1208,21 +1230,12 @@ def render_header_config(email_subject: str) -> Dict:
     
     # Second row: Image Source
     image_source_options = ["External URL", "Upload Image (Base64)"]
-    raw_value = st.session_state.get("header_image_source", "External URL")
-    # Handle both old format (int index) and new format (option string)
-    # IMPORTANT: Set the value in session_state BEFORE creating the widget
-    if isinstance(raw_value, int):
-        # Old format: convert index to option string
-        image_source_value = image_source_options[max(0, min(1, raw_value))]
-        st.session_state["header_image_source"] = image_source_value
-    elif raw_value not in image_source_options:
-        # Invalid value, default to first option
-        image_source_value = image_source_options[0]
-        st.session_state["header_image_source"] = image_source_value
-    else:
-        # Value is already a valid option string, ensure it's set in session_state
-        if "header_image_source" not in st.session_state or st.session_state["header_image_source"] != raw_value:
-            st.session_state["header_image_source"] = raw_value
+    normalized_header_source = normalize_choice(
+        st.session_state.get("header_image_source", "External URL"),
+        image_source_options,
+        "External URL"
+    )
+    st.session_state["header_image_source"] = normalized_header_source
     # Use the session_state key directly - Streamlit will use the value from session_state
     image_source = st.radio(
         "Image Source",
@@ -1457,22 +1470,13 @@ def render_footer_config() -> Dict:
     
     # Second row: Image Source (full width)
     image_source_options = ["External URL", "Upload Image (Base64)"]
-    raw_value = st.session_state.get("footer_image_source", "External URL")
-    # Handle both old format (int index) and new format (option string)
-    # IMPORTANT: Set the value in session_state BEFORE creating the widget
     footer_key = "footer_image_source"
-    if isinstance(raw_value, int):
-        # Old format: convert index to option string
-        image_source_value = image_source_options[max(0, min(1, raw_value))]
-        st.session_state[footer_key] = image_source_value
-    elif raw_value not in image_source_options:
-        # Invalid value, default to first option
-        image_source_value = image_source_options[0]
-        st.session_state[footer_key] = image_source_value
-    else:
-        # Value is already a valid option string, ensure it's set in session_state
-        if footer_key not in st.session_state or st.session_state[footer_key] != raw_value:
-            st.session_state[footer_key] = raw_value
+    normalized_footer_source = normalize_choice(
+        st.session_state.get(footer_key, "External URL"),
+        image_source_options,
+        "External URL"
+    )
+    st.session_state[footer_key] = normalized_footer_source
     # Use the session_state key directly - Streamlit will use the value from session_state
     image_source = st.radio(
         "Image Source",
@@ -1549,15 +1553,11 @@ def render_footer_config() -> Dict:
     
     # Position of the footer image relative to text
     footer_image_position_options = ["Above Text", "After Text"]
-    raw_footer_image_position = st.session_state.get("footer_image_position", "Above Text")
-    if isinstance(raw_footer_image_position, int):
-        normalized_footer_image_position = footer_image_position_options[max(0, min(1, raw_footer_image_position))]
-    else:
-        footer_pos_map = {
-            "above text": "Above Text",
-            "after text": "After Text"
-        }
-        normalized_footer_image_position = footer_pos_map.get(str(raw_footer_image_position).strip().lower(), "Above Text")
+    normalized_footer_image_position = normalize_choice(
+        st.session_state.get("footer_image_position", "Above Text"),
+        footer_image_position_options,
+        "Above Text"
+    )
     # Ensure session_state is set before widget creation
     st.session_state["footer_image_position"] = normalized_footer_image_position
     footer_image_position = st.radio(
@@ -2219,22 +2219,13 @@ def render_layer_form(layer_number: int) -> Dict:
     
     # Image source selection
     image_source_options = ["External URL", "Upload Image (Base64)"]
-    raw_value = st.session_state.get(f"image_source_{layer_number}", "External URL")
-    # Handle both old format (int index) and new format (option string)
-    # IMPORTANT: Set the value in session_state BEFORE creating the widget
     layer_key = f"image_source_{layer_number}"
-    if isinstance(raw_value, int):
-        # Old format: convert index to option string
-        image_source_value = image_source_options[max(0, min(1, raw_value))]
-        st.session_state[layer_key] = image_source_value
-    elif raw_value not in image_source_options:
-        # Invalid value, default to first option
-        image_source_value = image_source_options[0]
-        st.session_state[layer_key] = image_source_value
-    else:
-        # Value is already a valid option string, ensure it's set in session_state
-        if layer_key not in st.session_state or st.session_state[layer_key] != raw_value:
-            st.session_state[layer_key] = raw_value
+    normalized_layer_source = normalize_choice(
+        st.session_state.get(layer_key, "External URL"),
+        image_source_options,
+        "External URL"
+    )
+    st.session_state[layer_key] = normalized_layer_source
     # Use the session_state key directly - Streamlit will use the value from session_state
     image_source = st.radio(
         f"Image Source - Layer {layer_number}",
