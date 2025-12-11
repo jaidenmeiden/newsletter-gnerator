@@ -258,6 +258,23 @@ def quill_with_reset(
     )
 
 
+def clean_quill_html(html: str) -> str:
+    """
+    Remove empty paragraphs/br-only blocks that add extra vertical space.
+    """
+    if not html:
+        return html
+    # Common empty blocks from Quill
+    replacements = [
+        "<p><br></p>",
+        "<p><br/></p>",
+        "<p><br /></p>",
+    ]
+    for token in replacements:
+        html = html.replace(token, "")
+    return html
+
+
 # Shared full toolbar for rich text editors
 FULL_QUILL_TOOLBAR = [
     [{'header': [1, 2, 3, 4, 5, 6, False]}],
@@ -606,6 +623,15 @@ class NewsletterGenerator:
             html_parts.append('<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">')
         
         html_parts.extend([
+            '<style>',
+            '.ql-align-center { text-align: center; }',
+            '.ql-align-right { text-align: right; }',
+            '.ql-align-justify { text-align: justify; }',
+            '.ql-content p { margin: 0 0 8px 0; line-height: 1.5; }',
+            '.ql-content h1, .ql-content h2, .ql-content h3, .ql-content h4, .ql-content h5, .ql-content h6 { margin: 0 0 10px 0; line-height: 1.3; }',
+            '.ql-content p:empty { margin: 0; height: 0; }',
+            '.ql-content p br:only-child { display: none; }',
+            '</style>',
             '</head>',
             f'<body style="margin: 0; padding: 0; font-family: {font_family}; background-color: #FFFFFF;">',
             '<table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #FFFFFF;">',
@@ -832,13 +858,11 @@ class NewsletterGenerator:
             # Check if content is HTML (from rich text editor)
             if '<' in content and '>' in content:
                 # Content is HTML from the editor (usually starts with <p>)
-                # Wrap it in a container with base styles (color and font-size)
-                # This allows inline styles (like specific word colors) to override the base
+                # Clean empty paragraphs and wrap with scoped styles
+                cleaned_content = clean_quill_html(content)
                 html_parts.append(
-                    f'<div style="color: {content_color}; font-size: {content_font_size}px; margin: 0; line-height: 1.5;">'
+                    f'<div class="ql-content" style="color: {content_color}; font-size: {content_font_size}px; margin: 0;">{cleaned_content}</div>'
                 )
-                html_parts.append(content)
-                html_parts.append('</div>')
             else:
                 # Plain text, convert newlines to <br> tags
                 formatted_content = content.replace('\n', '<br>')
@@ -938,13 +962,10 @@ class NewsletterGenerator:
             # Check if header_text is HTML (from rich text editor)
             if '<' in header_text and '>' in header_text:
                 # Content is HTML from the editor (usually starts with <p>)
-                # Wrap it in a container with base styles (color and font-size)
-                # This allows inline styles (like specific word colors) to override the base
+                cleaned_header = clean_quill_html(header_text)
                 html_parts.append(
-                    f'<div style="color: {text_color}; font-size: {text_font_size}px; margin: 0; line-height: 1.5;">'
+                    f'<div class="ql-content" style="color: {text_color}; font-size: {text_font_size}px; margin: 0;">{cleaned_header}</div>'
                 )
-                html_parts.append(header_text)
-                html_parts.append('</div>')
             else:
                 # Plain text, convert newlines to <br> tags
                 formatted_text = header_text.replace('\n', '<br>')
