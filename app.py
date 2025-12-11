@@ -133,6 +133,25 @@ def apply_reset_defaults():
     
     st.session_state['force_reset_fields'] = False
 
+
+def show_temp_success(message_key: str, time_key: str, timeout: int = 10):
+    """
+    Render a temporary success message stored in session_state.
+    Clears it after the timeout expires.
+    """
+    current_time = time.time()
+    message = st.session_state.get(message_key)
+    if not message:
+        return
+    message_time = st.session_state.get(time_key, current_time)
+    if current_time - message_time < timeout:
+        st.success(message)
+    else:
+        del st.session_state[message_key]
+        if time_key in st.session_state:
+            del st.session_state[time_key]
+
+
 class MongoManager:
     """Manages MongoDB connection and operations for newsletter templates."""
     
@@ -2657,37 +2676,9 @@ def main():
     
     # Show template save/load/delete success message at the top if available
     # Messages auto-disappear after 10 seconds
-    current_time = time.time()
-    
-    if st.session_state.get('template_save_success_message'):
-        message_time = st.session_state.get('template_save_success_message_time', current_time)
-        if current_time - message_time < 10:
-            st.success(st.session_state['template_save_success_message'])
-        else:
-            # Message expired, remove it
-            del st.session_state['template_save_success_message']
-            if 'template_save_success_message_time' in st.session_state:
-                del st.session_state['template_save_success_message_time']
-    
-    if st.session_state.get('template_load_success_message'):
-        message_time = st.session_state.get('template_load_success_message_time', current_time)
-        if current_time - message_time < 10:
-            st.success(st.session_state['template_load_success_message'])
-        else:
-            # Message expired, remove it
-            del st.session_state['template_load_success_message']
-            if 'template_load_success_message_time' in st.session_state:
-                del st.session_state['template_load_success_message_time']
-    
-    if st.session_state.get('template_delete_success_message'):
-        message_time = st.session_state.get('template_delete_success_message_time', current_time)
-        if current_time - message_time < 10:
-            st.success(st.session_state['template_delete_success_message'])
-        else:
-            # Message expired, remove it
-            del st.session_state['template_delete_success_message']
-            if 'template_delete_success_message_time' in st.session_state:
-                del st.session_state['template_delete_success_message_time']
+    show_temp_success('template_save_success_message', 'template_save_success_message_time')
+    show_temp_success('template_load_success_message', 'template_load_success_message_time')
+    show_temp_success('template_delete_success_message', 'template_delete_success_message_time')
     
     # Note: Messages will automatically disappear after 10 seconds on the next user interaction
     # This is the standard Streamlit behavior - the page re-renders when user interacts with any widget
@@ -2856,8 +2847,8 @@ def main():
                                 # Clear loaded template name if the deleted template was loaded
                                 if st.session_state.get('loaded_template_name') == selected_template:
                                     st.session_state['loaded_template_name'] = None
-                                # Reset selectbox to default
-                                st.session_state['template_selectbox'] = default_option
+                                # Reset selectbox to default on next render
+                                st.session_state['template_selectbox_next'] = default_option
                                 # Rerun to refresh template list and show message
                                 st.rerun()
                             else:
