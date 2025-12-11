@@ -258,6 +258,24 @@ def quill_with_reset(
     )
 
 
+# Shared full toolbar for rich text editors
+FULL_QUILL_TOOLBAR = [
+    [{'header': [1, 2, 3, 4, 5, 6, False]}],
+    [{'font': []}],
+    [{'size': ['small', False, 'large', 'huge']}],
+    ['bold', 'italic', 'underline', 'strike'],
+    [{'color': []}, {'background': []}],
+    [{'script': 'sub'}, {'script': 'super'}],
+    [{'align': []}],
+    [{'list': 'ordered'}, {'list': 'bullet'}],
+    [{'indent': '-1'}, {'indent': '+1'}],
+    [{'direction': 'rtl'}],
+    ['blockquote', 'code-block'],
+    ['link', 'image', 'video'],
+    ['clean']
+]
+
+
 def init_template_state(default_option: str):
     """
     Consolidate template selection/loading state into a single structure.
@@ -1493,15 +1511,7 @@ def render_header_config(email_subject: str) -> Dict:
         load_ts_key="header_text_load_timestamp",
         version_key="header_text_version",
         placeholder="e.g., Enter header text here...",
-        toolbar=[
-            [{'size': ['small', False, 'large', 'huge']}],
-            ['bold', 'italic', 'underline', 'strike'],
-            [{'align': []}],
-            [{'list': 'ordered'}, {'list': 'bullet'}],
-            [{'color': []}, {'background': []}],
-            ['link'],
-            ['clean']
-        ],
+        toolbar=FULL_QUILL_TOOLBAR,
         html=True
     )
     
@@ -2287,14 +2297,7 @@ def render_layer_form(layer_number: int) -> Dict:
         load_ts_key=load_timestamp_key,
         version_key=f"content_version_{layer_number}",
         placeholder="e.g., Enter main content here...",
-        toolbar=[
-            [{'header': [1, 2, 3, False]}],
-            ['bold', 'italic', 'underline', 'strike'],
-            [{'list': 'ordered'}, {'list': 'bullet'}],
-            [{'color': []}, {'background': []}],
-            ['link'],
-            ['clean']
-        ],
+        toolbar=FULL_QUILL_TOOLBAR,
         html=True
     )
     
