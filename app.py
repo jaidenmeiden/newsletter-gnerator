@@ -2784,7 +2784,7 @@ def main():
     
     # Get MongoDB manager and template names
     mongo_manager = get_mongo_manager()
-    template_names = mongo_manager.load_templates()
+    template_names = sorted(mongo_manager.load_templates())
     
     # Default option for selectbox (new template)
     default_option = "🆕 Generate New Template"
