@@ -2234,6 +2234,10 @@ def apply_template_to_session_state(template_data: dict):
     Args:
         template_data: Dictionary containing template configuration
     """
+    # Store the template name for later use
+    if 'name' in template_data:
+        st.session_state['loaded_template_name'] = template_data['name']
+    
     config = template_data.get('config', {})
     header_config = template_data.get('header_config', {})
     layers = template_data.get('layers', [])
@@ -2566,16 +2570,59 @@ def main():
     st.header("💾 Template Management")
     col_save, col_load = st.columns(2)
     
+    # Get MongoDB manager and template names
+    mongo_manager = get_mongo_manager()
+    template_names = mongo_manager.load_templates()
+    
+    # Check if a template is currently loaded
+    loaded_template_name = st.session_state.get('loaded_template_name', None)
+    
+    # Determine if we're in "update mode" (template loaded) or "save mode" (new template)
+    is_update_mode = loaded_template_name is not None
+    
     with col_save:
         st.subheader("Save Template")
+        
+        # Set template name value based on loaded template or empty
+        if is_update_mode:
+            # When a template is loaded, sync the widget state before creating it
+            if st.session_state.get('template_name_input') != loaded_template_name:
+                st.session_state['template_name_input'] = loaded_template_name
+            template_name_value = loaded_template_name
+            template_name_disabled = True
+            # Clear the flag if it was set
+            if st.session_state.get('clear_template_name_input', False):
+                st.session_state['clear_template_name_input'] = False
+        else:
+            # When not in update mode, allow user to type
+            # Check if we need to clear the field (when switching from update to save mode)
+            if st.session_state.get('clear_template_name_input', False):
+                # Clear the field by removing the key from session_state before widget creation
+                if 'template_name_input' in st.session_state:
+                    del st.session_state['template_name_input']
+                st.session_state['clear_template_name_input'] = False
+                template_name_value = ''
+            else:
+                # Use existing value from widget or empty
+                template_name_value = st.session_state.get('template_name_input', '')
+            template_name_disabled = False
+        
         template_name = st.text_input(
             "Template Name",
-            value="",
+            value=template_name_value,
             key="template_name_input",
             help="Enter a unique name for this template",
-            placeholder="e.g., Monthly Newsletter Template"
+            placeholder="e.g., Monthly Newsletter Template",
+            disabled=template_name_disabled
         )
-        if st.button("💾 Save Template", type="primary", width='stretch'):
+        
+        # Determine button label and action
+        if is_update_mode:
+            button_label = "💾 Update Template"
+        else:
+            button_label = "💾 Save Template"
+        
+        if st.button(button_label, type="primary", width='stretch'):
             if not template_name or not template_name.strip():
                 st.error("⚠️ Please enter a name for the template.")
             else:
@@ -2586,41 +2633,65 @@ def main():
                 # Store flag to save after rendering
                 st.session_state['save_template_flag'] = True
                 st.session_state['template_name_to_save'] = template_name.strip()
+                # If updating, keep the loaded template name in session state
+                if is_update_mode:
+                    st.session_state['loaded_template_name'] = template_name.strip()
     
     with col_load:
         st.subheader("Load Template")
-        mongo_manager = get_mongo_manager()
-        template_names = mongo_manager.load_templates()
         
+        # Prepare options with default "---" option
+        default_option = "---"
         if template_names:
-            selected_template = st.selectbox(
-                "Select Template",
-                options=template_names,
-                key="template_selectbox",
-                help="Choose a template to load"
-            )
-            
-            col_load_btn, col_delete_btn = st.columns(2)
-            
-            with col_load_btn:
-                if st.button("📂 Load Template", type="secondary", width='stretch'):
-                    template_data = mongo_manager.load_template_data(selected_template)
-                    if template_data:
-                        apply_template_to_session_state(template_data)
-                        # Store success message to show at the top
-                        st.session_state['template_load_success_message'] = f"✅ Template '{selected_template}' loaded successfully!"
-                        st.session_state['template_load_success_message_time'] = time.time()
-                        # Rerun to show the message at the top
-                        st.rerun()
-                    else:
-                        st.error("⚠️ Error loading the template.")
-            
-            with col_delete_btn:
-                if st.button("🗑️ Delete Template", type="secondary", width='stretch'):
-                    # First confirmation: Set flag to show delete confirmation dialog
-                    st.session_state['show_delete_confirmation'] = True
-                    st.session_state['template_to_delete'] = selected_template
+            selectbox_options = [default_option] + template_names
+        else:
+            selectbox_options = [default_option]
+        
+        # Get current selection or default to "---"
+        current_selection = st.session_state.get('template_selectbox', default_option)
+        # If current selection is not in options (e.g., template was deleted), reset to default
+        if current_selection not in selectbox_options:
+            current_selection = default_option
+            st.session_state['template_selectbox'] = default_option
+        
+        selected_template = st.selectbox(
+            "Select Template",
+            options=selectbox_options,
+            key="template_selectbox",
+            help="Choose a template to load",
+            index=selectbox_options.index(current_selection) if current_selection in selectbox_options else 0
+        )
+        
+        # Clear loaded template name if "---" is selected
+        if selected_template == default_option and loaded_template_name is not None:
+            st.session_state['loaded_template_name'] = None
+            # Set flag to clear template name input field
+            st.session_state['clear_template_name_input'] = True
+        
+        # Determine if buttons should be disabled
+        buttons_disabled = (selected_template == default_option)
+        
+        col_load_btn, col_delete_btn = st.columns(2)
+        
+        with col_load_btn:
+            if st.button("📂 Load Template", type="secondary", width='stretch', disabled=buttons_disabled):
+                template_data = mongo_manager.load_template_data(selected_template)
+                if template_data:
+                    apply_template_to_session_state(template_data)
+                    # Store success message to show at the top
+                    st.session_state['template_load_success_message'] = f"✅ Template '{selected_template}' loaded successfully!"
+                    st.session_state['template_load_success_message_time'] = time.time()
+                    # Rerun to show the message at the top and update the template name field
                     st.rerun()
+                else:
+                    st.error("⚠️ Error loading the template.")
+        
+        with col_delete_btn:
+            if st.button("🗑️ Delete Template", type="secondary", width='stretch', disabled=buttons_disabled):
+                # First confirmation: Set flag to show delete confirmation dialog
+                st.session_state['show_delete_confirmation'] = True
+                st.session_state['template_to_delete'] = selected_template
+                st.rerun()
             
             # Show delete confirmation dialog if flag is set
             if st.session_state.get('show_delete_confirmation', False) and st.session_state.get('template_to_delete') == selected_template:
@@ -2646,6 +2717,11 @@ def main():
                                 # Clear confirmation flags
                                 st.session_state['show_delete_confirmation'] = False
                                 st.session_state['template_to_delete'] = None
+                                # Clear loaded template name if the deleted template was loaded
+                                if st.session_state.get('loaded_template_name') == selected_template:
+                                    st.session_state['loaded_template_name'] = None
+                                # Reset selectbox to default
+                                st.session_state['template_selectbox'] = default_option
                                 # Rerun to refresh template list and show message
                                 st.rerun()
                             else:
@@ -2657,7 +2733,9 @@ def main():
                         st.session_state['show_delete_confirmation'] = False
                         st.session_state['template_to_delete'] = None
                         st.rerun()
-        else:
+        
+        # Show message if no templates available
+        if not template_names:
             st.info("No templates saved yet.")
     
     st.divider()
