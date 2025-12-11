@@ -174,6 +174,16 @@ def normalize_choice(value, options, default):
     return default
 
 
+def rerun_after(action: str = ""):
+    """
+    Centralized rerun trigger to keep behavior consistent.
+    Optionally annotates the action in session_state for debugging/trace.
+    """
+    if action:
+        st.session_state["last_rerun_action"] = action
+    st.rerun()
+
+
 class MongoManager:
     """Manages MongoDB connection and operations for newsletter templates."""
     
@@ -1087,7 +1097,7 @@ def render_sidebar() -> Dict:
         if st.button("🧹 Clean Form", type="secondary"):
             st.session_state['force_reset_fields'] = True
             st.experimental_set_query_params(reset=str(int(time.time() * 1000)))
-            st.rerun()
+            rerun_after("clean_form")
         
         email_subject = st.text_input(
             "Email Subject",
@@ -2797,7 +2807,7 @@ def main():
                     st.session_state['template_load_success_message'] = f"✅ Template '{selected_template}' loaded successfully!"
                     st.session_state['template_load_success_message_time'] = time.time()
                     # Rerun to show the message at the top and update the template name field
-                    st.rerun()
+                    rerun_after("load_template_success")
                 else:
                     st.error("⚠️ Error loading the template.")
         
@@ -2806,7 +2816,7 @@ def main():
                 # First confirmation: Set flag to show delete confirmation dialog
                 st.session_state['show_delete_confirmation'] = True
                 st.session_state['template_to_delete'] = selected_template
-                st.rerun()
+                rerun_after("delete_template_trigger")
             
             # Show delete confirmation dialog if flag is set
             if st.session_state.get('show_delete_confirmation', False) and st.session_state.get('template_to_delete') == selected_template:
@@ -2841,7 +2851,7 @@ def main():
                                 st.session_state['force_reset_fields'] = True
                                 st.experimental_set_query_params(reset=str(int(time.time() * 1000)))
                                 # Rerun to refresh template list and show message
-                                st.rerun()
+                                rerun_after("delete_template_success")
                             else:
                                 st.error("⚠️ Error deleting the template.")
                 
@@ -2850,7 +2860,7 @@ def main():
                         # Clear confirmation flags
                         st.session_state['show_delete_confirmation'] = False
                         st.session_state['template_to_delete'] = None
-                        st.rerun()
+                        rerun_after("delete_template_cancel")
         
         # Show message if no templates available
         if not template_names:
@@ -2948,7 +2958,7 @@ def main():
                 # Schedule the selectbox to show the saved/updated template on next render
                 st.session_state['template_selectbox_next'] = template_name
                 # Rerun to show the message at the top
-                st.rerun()
+                rerun_after("save_template_success")
     
     # Preview and Download section
     if 'newsletter_html' in st.session_state:
