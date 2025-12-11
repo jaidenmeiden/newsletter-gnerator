@@ -2574,8 +2574,8 @@ def main():
     mongo_manager = get_mongo_manager()
     template_names = mongo_manager.load_templates()
     
-    # Default option for selectbox
-    default_option = "---"
+    # Default option for selectbox (new template)
+    default_option = "🆕 Generate New Template"
     selected_template_state = st.session_state.get('template_selectbox', default_option)
     
     # Check if a template is currently loaded
@@ -2590,7 +2590,12 @@ def main():
     is_update_mode = loaded_template_name is not None
     
     with col_save:
-        st.subheader("Save Template")
+        # Dynamic title depending on mode
+        if is_update_mode:
+            save_title = f"Save Template (Working with {loaded_template_name})"
+        else:
+            save_title = "Save Template (New Template)"
+        st.subheader(save_title)
         
         # Set template name value based on loaded template or empty
         if is_update_mode:
@@ -2626,7 +2631,7 @@ def main():
         
         # Determine button label and action
         if is_update_mode:
-            button_label = "💾 Update Template"
+            button_label = "🔄 Update Template"
         else:
             button_label = "💾 Save Template"
         
