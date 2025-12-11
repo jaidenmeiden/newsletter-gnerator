@@ -176,6 +176,11 @@ def apply_reset_defaults():
     }
     apply_defaults(subscription_defaults)
     
+    # Clear preview/download artifacts
+    for k in ["newsletter_html", "newsletter_subject"]:
+        if k in st.session_state:
+            del st.session_state[k]
+    
     st.session_state['force_reset_fields'] = False
 
 
