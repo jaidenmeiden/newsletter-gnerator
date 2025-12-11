@@ -2849,6 +2849,9 @@ def main():
                                     st.session_state['loaded_template_name'] = None
                                 # Reset selectbox to default on next render
                                 st.session_state['template_selectbox_next'] = default_option
+                                # Apply full clean like "Clean Form"
+                                st.session_state['force_reset_fields'] = True
+                                st.experimental_set_query_params(reset=str(int(time.time() * 1000)))
                                 # Rerun to refresh template list and show message
                                 st.rerun()
                             else:
