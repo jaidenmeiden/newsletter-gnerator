@@ -174,6 +174,45 @@ def normalize_choice(value, options, default):
     return default
 
 
+def quill_with_reset(
+    value_key: str,
+    placeholder: str,
+    toolbar: list,
+    temp_key: Optional[str] = None,
+    load_ts_key: Optional[str] = None,
+    version_key: Optional[str] = None,
+    html: bool = True,
+):
+    """
+    Render a Quill editor that supports:
+    - Loading templates via temp_key (forces widget reinit with load timestamp).
+    - Forced resets via version_key (forces widget reinit with unique key).
+    """
+    if value_key not in st.session_state:
+        st.session_state[value_key] = ""
+    
+    widget_key = value_key
+    
+    if temp_key and temp_key in st.session_state:
+        # Template load path: set value and force a fresh widget key
+        st.session_state[value_key] = st.session_state[temp_key]
+        ts_key = load_ts_key or f"{value_key}_load_timestamp"
+        st.session_state[ts_key] = st.session_state.get(ts_key, 0) + 1
+        del st.session_state[temp_key]
+        widget_key = f"{value_key}_loaded_{st.session_state[ts_key]}"
+    elif version_key and st.session_state.get(version_key):
+        # Forced reset path: use version to force a fresh widget key
+        widget_key = f"{value_key}_reset_{st.session_state[version_key]}"
+    
+    return st_quill(
+        value=st.session_state.get(value_key, ""),
+        placeholder=placeholder,
+        html=html,
+        key=widget_key,
+        toolbar=toolbar
+    )
+
+
 def rerun_after(action: str = ""):
     """
     Centralized rerun trigger to keep behavior consistent.
@@ -1357,33 +1396,12 @@ def render_header_config(email_subject: str) -> Dict:
     
     # Header Text with styling
     st.markdown("**Header Text**")
-    # Ensure the value is in session_state before creating the widget
-    # IMPORTANT: Initialize or ensure value exists BEFORE widget creation
-    if "header_text" not in st.session_state:
-        st.session_state["header_text"] = ""
-    # Check if template was loaded (indicated by temp key) or a forced reset happened (header_text_version)
-    if "_header_text_temp" in st.session_state:
-        # Template was loaded, update the value and use a unique key to force reinitialization
-        header_text_value = st.session_state["_header_text_temp"]
-        st.session_state["header_text"] = header_text_value
-        # Use a timestamp-based key to force widget reinitialization
-        if "header_text_load_timestamp" not in st.session_state:
-            st.session_state["header_text_load_timestamp"] = 0
-        st.session_state["header_text_load_timestamp"] = st.session_state.get("header_text_load_timestamp", 0) + 1
-        del st.session_state["_header_text_temp"]
-        widget_key = f"header_text_loaded_{st.session_state['header_text_load_timestamp']}"
-    elif st.session_state.get("header_text_version"):
-        # Forced reset: use a unique key so the client widget is recreated empty
-        widget_key = f"header_text_reset_{st.session_state['header_text_version']}"
-    else:
-        # Normal usage, use standard key
-        widget_key = "header_text"
-    # st_quill will use the value from session_state via key=
-    header_text = st_quill(
-        value=st.session_state.get("header_text", ""),
+    header_text = quill_with_reset(
+        value_key="header_text",
+        temp_key="_header_text_temp",
+        load_ts_key="header_text_load_timestamp",
+        version_key="header_text_version",
         placeholder="e.g., Enter header text here...",
-        html=True,  # Return HTML content
-        key=widget_key,
         toolbar=[
             [{'size': ['small', False, 'large', 'huge']}],
             ['bold', 'italic', 'underline', 'strike'],
@@ -1392,7 +1410,8 @@ def render_header_config(email_subject: str) -> Dict:
             [{'color': []}, {'background': []}],
             ['link'],
             ['clean']
-        ]
+        ],
+        html=True
     )
     
     # Header Text styling (below editor, like in layers)
@@ -2169,32 +2188,13 @@ def render_layer_form(layer_number: int) -> Dict:
     st.markdown(f"**Main Content - Layer {layer_number}**")
     # Ensure the value is in session_state before creating the widget
     content_key = f"content_{layer_number}"
-    # IMPORTANT: Initialize or ensure value exists BEFORE widget creation
-    if content_key not in st.session_state:
-        st.session_state[content_key] = ""
-    # Check if template was loaded (indicated by temp key)
     temp_key = f"_{content_key}_temp"
-    if temp_key in st.session_state:
-        # Template was loaded, update the value and use a unique key to force reinitialization
-        content_value = st.session_state[temp_key]
-        st.session_state[content_key] = content_value
-        # Use a timestamp-based key to force widget reinitialization
-        load_timestamp_key = f"{content_key}_load_timestamp"
-        if load_timestamp_key not in st.session_state:
-            st.session_state[load_timestamp_key] = 0
-        st.session_state[load_timestamp_key] = st.session_state.get(load_timestamp_key, 0) + 1
-        del st.session_state[temp_key]
-        # Use unique key only when template was loaded
-        widget_key = f"{content_key}_loaded_{st.session_state[load_timestamp_key]}"
-    else:
-        # Normal usage, use standard key
-        widget_key = content_key
-    # st_quill will use the value from session_state via key=
-    content = st_quill(
-        value=st.session_state.get(content_key, ""),
+    load_timestamp_key = f"{content_key}_load_timestamp"
+    content = quill_with_reset(
+        value_key=content_key,
+        temp_key=temp_key,
+        load_ts_key=load_timestamp_key,
         placeholder="e.g., Enter main content here...",
-        html=True,  # Return HTML content
-        key=widget_key,
         toolbar=[
             [{'header': [1, 2, 3, False]}],
             ['bold', 'italic', 'underline', 'strike'],
@@ -2202,7 +2202,8 @@ def render_layer_form(layer_number: int) -> Dict:
             [{'color': []}, {'background': []}],
             ['link'],
             ['clean']
-        ]
+        ],
+        html=True
     )
     
     # Main Content styling
