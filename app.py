@@ -2574,8 +2574,17 @@ def main():
     mongo_manager = get_mongo_manager()
     template_names = mongo_manager.load_templates()
     
+    # Default option for selectbox
+    default_option = "---"
+    selected_template_state = st.session_state.get('template_selectbox', default_option)
+    
     # Check if a template is currently loaded
     loaded_template_name = st.session_state.get('loaded_template_name', None)
+    # If user has selected the default option, clear loaded template and mark to clear name field
+    if selected_template_state == default_option and loaded_template_name is not None:
+        st.session_state['loaded_template_name'] = None
+        st.session_state['clear_template_name_input'] = True
+        loaded_template_name = None
     
     # Determine if we're in "update mode" (template loaded) or "save mode" (new template)
     is_update_mode = loaded_template_name is not None
@@ -2597,9 +2606,8 @@ def main():
             # When not in update mode, allow user to type
             # Check if we need to clear the field (when switching from update to save mode)
             if st.session_state.get('clear_template_name_input', False):
-                # Clear the field by removing the key from session_state before widget creation
-                if 'template_name_input' in st.session_state:
-                    del st.session_state['template_name_input']
+                # Clear the field by setting an empty value before widget creation
+                st.session_state['template_name_input'] = ''
                 st.session_state['clear_template_name_input'] = False
                 template_name_value = ''
             else:
@@ -2641,7 +2649,6 @@ def main():
         st.subheader("Load Template")
         
         # Prepare options with default "---" option
-        default_option = "---"
         if template_names:
             selectbox_options = [default_option] + template_names
         else:
@@ -2662,10 +2669,10 @@ def main():
             index=selectbox_options.index(current_selection) if current_selection in selectbox_options else 0
         )
         
-        # Clear loaded template name if "---" is selected
+        # Clear loaded template name if "---" is selected (handled before save column)
+        # Kept here as a safeguard without rerun
         if selected_template == default_option and loaded_template_name is not None:
             st.session_state['loaded_template_name'] = None
-            # Set flag to clear template name input field
             st.session_state['clear_template_name_input'] = True
         
         # Determine if buttons should be disabled
