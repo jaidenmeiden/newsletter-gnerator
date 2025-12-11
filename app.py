@@ -24,10 +24,10 @@ def apply_reset_defaults():
         return
     
     # Template management defaults
-    st.session_state['template_selectbox_next'] = "🆕 Generate New Template"
     st.session_state['template_selectbox'] = "🆕 Generate New Template"
-    st.session_state['clear_template_name_input'] = True
     st.session_state['loaded_template_name'] = None
+    st.session_state["template_state_mode"] = "new"
+    st.session_state["template_state_working"] = None
     st.session_state['template_name_input'] = ""
     
     # Sidebar defaults
@@ -211,6 +211,52 @@ def quill_with_reset(
         key=widget_key,
         toolbar=toolbar
     )
+
+
+def init_template_state(default_option: str):
+    """
+    Consolidate template selection/loading state into a single structure.
+    Keys used:
+    - template_state_mode: "new" or "loaded"
+    - template_state_selected: current select value (string)
+    - template_state_working: template currently loaded/being edited (string or None)
+    - template_state_pending_select: optional next value to set in select
+    """
+    pending_select = st.session_state.get("template_state_pending_select")
+    current_select = st.session_state.get("template_selectbox")
+    selected = pending_select or current_select or default_option
+    
+    if selected == default_option:
+        mode = "new"
+        working = None
+    else:
+        mode = "loaded"
+        working = st.session_state.get("template_state_working") or selected
+    
+    st.session_state["template_state_mode"] = mode
+    st.session_state["template_state_selected"] = selected
+    st.session_state["template_state_working"] = working
+    
+    if "template_state_pending_select" in st.session_state:
+        del st.session_state["template_state_pending_select"]
+
+
+def set_pending_select(value: str):
+    st.session_state["template_state_pending_select"] = value
+
+
+def set_mode_new(default_option: str):
+    set_pending_select(default_option)
+    st.session_state["template_state_mode"] = "new"
+    st.session_state["template_state_working"] = None
+    st.session_state["pending_template_name_input"] = ""
+
+
+def set_mode_loaded(name: str):
+    st.session_state["template_state_mode"] = "loaded"
+    st.session_state["template_state_working"] = name
+    set_pending_select(name)
+    st.session_state["pending_template_name_input"] = name
 
 
 def rerun_after(action: str = ""):
@@ -2381,7 +2427,7 @@ def apply_template_to_session_state(template_data: dict):
     """
     # Store the template name for later use
     if 'name' in template_data:
-        st.session_state['loaded_template_name'] = template_data['name']
+        set_mode_loaded(template_data['name'])
     
     config = template_data.get('config', {})
     header_config = template_data.get('header_config', {})
@@ -2696,22 +2742,12 @@ def main():
     
     # Default option for selectbox (new template)
     default_option = "🆕 Generate New Template"
-    # If a next selection was scheduled (e.g., after save), apply it before widget creation
-    if st.session_state.get('template_selectbox_next'):
-        st.session_state['template_selectbox'] = st.session_state['template_selectbox_next']
-        del st.session_state['template_selectbox_next']
-    selected_template_state = st.session_state.get('template_selectbox', default_option)
     
-    # Check if a template is currently loaded
-    loaded_template_name = st.session_state.get('loaded_template_name', None)
-    # If user has selected the default option, clear loaded template and mark to clear name field
-    if selected_template_state == default_option and loaded_template_name is not None:
-        st.session_state['loaded_template_name'] = None
-        st.session_state['clear_template_name_input'] = True
-        loaded_template_name = None
-    
-    # Determine if we're in "update mode" (template loaded) or "save mode" (new template)
-    is_update_mode = loaded_template_name is not None
+    # Consolidate template state
+    init_template_state(default_option)
+    selected_template_state = st.session_state.get("template_state_selected", default_option)
+    loaded_template_name = st.session_state.get("template_state_working")
+    is_update_mode = st.session_state.get("template_state_mode") == "loaded"
     
     with col_save:
         # Dynamic title depending on mode
@@ -2721,27 +2757,17 @@ def main():
             save_title = "Save Template (New Template)"
         st.subheader(save_title)
         
+        # Apply any pending template name (set by mode transitions) before creating the widget
+        if "pending_template_name_input" in st.session_state:
+            st.session_state["template_name_input"] = st.session_state["pending_template_name_input"]
+            del st.session_state["pending_template_name_input"]
+        
         # Set template name value based on loaded template or empty
         if is_update_mode:
-            # When a template is loaded, sync the widget state before creating it
-            if st.session_state.get('template_name_input') != loaded_template_name:
-                st.session_state['template_name_input'] = loaded_template_name
             template_name_value = loaded_template_name
             template_name_disabled = True
-            # Clear the flag if it was set
-            if st.session_state.get('clear_template_name_input', False):
-                st.session_state['clear_template_name_input'] = False
         else:
-            # When not in update mode, allow user to type
-            # Check if we need to clear the field (when switching from update to save mode)
-            if st.session_state.get('clear_template_name_input', False):
-                # Clear the field by setting an empty value before widget creation
-                st.session_state['template_name_input'] = ''
-                st.session_state['clear_template_name_input'] = False
-                template_name_value = ''
-            else:
-                # Use existing value from widget or empty
-                template_name_value = st.session_state.get('template_name_input', '')
+            template_name_value = st.session_state.get('template_name_input', '')
             template_name_disabled = False
         
         template_name = st.text_input(
@@ -2767,14 +2793,13 @@ def main():
                 # Store flag to save after rendering
                 st.session_state['save_template_flag'] = True
                 st.session_state['template_name_to_save'] = template_name.strip()
-                # Keep the loaded template name in session_state so the UI reflects "working with"
-                st.session_state['loaded_template_name'] = template_name.strip()
+                set_mode_loaded(template_name.strip())
     
     with col_load:
         st.subheader("Load Template")
         
         # Prepare options with default option and ensure current selection is preserved
-        current_selection = st.session_state.get('template_selectbox', default_option)
+        current_selection = selected_template_state
         selectbox_options = [default_option] + template_names
         # If the current selection is not in the loaded list and is not the default, keep it to show it selected
         if current_selection not in selectbox_options and current_selection != default_option:
@@ -2787,12 +2812,12 @@ def main():
             help="Choose a template to load",
             index=selectbox_options.index(current_selection) if current_selection in selectbox_options else 0
         )
+        # Persist selected value
+        st.session_state["template_state_selected"] = selected_template
         
-        # Clear loaded template name if "---" is selected (handled before save column)
-        # Kept here as a safeguard without rerun
+        # Clear loaded template name if default is selected (handled via template_state)
         if selected_template == default_option and loaded_template_name is not None:
-            st.session_state['loaded_template_name'] = None
-            st.session_state['clear_template_name_input'] = True
+            set_mode_new(default_option)
         
         # Determine if buttons should be disabled
         buttons_disabled = (selected_template == default_option)
@@ -2804,6 +2829,7 @@ def main():
                 template_data = mongo_manager.load_template_data(selected_template)
                 if template_data:
                     apply_template_to_session_state(template_data)
+                    set_mode_loaded(selected_template)
                     # Store success message to show at the top
                     st.session_state['template_load_success_message'] = f"✅ Template '{selected_template}' loaded successfully!"
                     st.session_state['template_load_success_message_time'] = time.time()
@@ -2843,11 +2869,8 @@ def main():
                                 # Clear confirmation flags
                                 st.session_state['show_delete_confirmation'] = False
                                 st.session_state['template_to_delete'] = None
-                                # Clear loaded template name if the deleted template was loaded
-                                if st.session_state.get('loaded_template_name') == selected_template:
-                                    st.session_state['loaded_template_name'] = None
-                                # Reset selectbox to default on next render
-                                st.session_state['template_selectbox_next'] = default_option
+                                # Reset to new mode and default select
+                                set_mode_new(default_option)
                                 # Apply full clean like "Clean Form"
                                 st.session_state['force_reset_fields'] = True
                                 st.experimental_set_query_params(reset=str(int(time.time() * 1000)))
@@ -2957,7 +2980,7 @@ def main():
                 st.session_state['template_save_success_message'] = f"✅ Template '{template_name}' saved successfully!"
                 st.session_state['template_save_success_message_time'] = time.time()
                 # Schedule the selectbox to show the saved/updated template on next render
-                st.session_state['template_selectbox_next'] = template_name
+                set_pending_select(template_name)
                 # Rerun to show the message at the top
                 rerun_after("save_template_success")
     
