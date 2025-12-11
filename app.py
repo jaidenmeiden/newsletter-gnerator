@@ -15,6 +15,124 @@ from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure, DuplicateKeyError
 
 
+def apply_reset_defaults():
+    """
+    Force widgets back to their coded defaults when a full clean is requested.
+    This overwrites session_state values before widgets are instantiated.
+    """
+    if not st.session_state.get('force_reset_fields'):
+        return
+    
+    # Template management defaults
+    st.session_state['template_selectbox_next'] = "🆕 Generate New Template"
+    st.session_state['template_selectbox'] = "🆕 Generate New Template"
+    st.session_state['clear_template_name_input'] = True
+    st.session_state['loaded_template_name'] = None
+    st.session_state['template_name_input'] = ""
+    
+    # Sidebar defaults
+    st.session_state["Email Subject"] = ""
+    st.session_state["Number of Layers"] = 1
+    st.session_state["Maximum Newsletter Width (px)"] = 1000
+    st.session_state["Font Family"] = 0
+    st.session_state["Background Color"] = "#FFFFFF"
+    st.session_state["Text Color"] = "#000000"
+    
+    # Header defaults
+    st.session_state["pre_header_text"] = ""
+    st.session_state["header_image_url"] = ""
+    st.session_state["header_image_base64"] = None
+    st.session_state["header_image_source"] = "External URL"
+    st.session_state["header_image_width"] = 600
+    st.session_state["header_title"] = ""
+    st.session_state["header_title_color"] = "#000000"
+    st.session_state["header_title_font_size"] = 28
+    st.session_state["header_title_bold"] = True
+    st.session_state["header_text"] = ""
+    st.session_state["header_text_version"] = int(time.time() * 1000)
+    # Remove any temp/load keys so the quill widget reverts to base key
+    if "_header_text_temp" in st.session_state:
+        del st.session_state["_header_text_temp"]
+    if "header_text_load_timestamp" in st.session_state:
+        del st.session_state["header_text_load_timestamp"]
+    st.session_state["header_text_color"] = "#000000"
+    st.session_state["header_text_font_size"] = 16
+    st.session_state["header_bg_color"] = "#ffffff"
+    
+    # Layer defaults (single layer by default)
+    for i in range(1, 2):
+        st.session_state[f"layer_order_{i}"] = i
+        st.session_state[f"link_url_{i}"] = ""
+        st.session_state[f"title_{i}"] = ""
+        st.session_state[f"title_color_{i}"] = "#000000"
+        st.session_state[f"title_font_size_{i}"] = 21
+        st.session_state[f"title_bold_{i}"] = True
+        st.session_state[f"subtitle_{i}"] = ""
+        st.session_state[f"subtitle_color_{i}"] = "#00925b"
+        st.session_state[f"subtitle_font_size_{i}"] = 15
+        st.session_state[f"subtitle_bold_{i}"] = False
+        st.session_state[f"subtitle2_{i}"] = ""
+        st.session_state[f"subtitle2_color_{i}"] = "#000000"
+        st.session_state[f"subtitle2_font_size_{i}"] = 13
+        st.session_state[f"subtitle2_bold_{i}"] = False
+        st.session_state[f"content_{i}"] = ""
+        st.session_state[f"_content_{i}_temp"] = ""
+        st.session_state[f"content_color_{i}"] = "#000000"
+        st.session_state[f"content_font_size_{i}"] = 13
+        st.session_state[f"image_url_{i}"] = ""
+        st.session_state[f"image_base64_{i}"] = None
+        st.session_state[f"image_source_{i}"] = "External URL"
+        st.session_state[f"alignment_{i}"] = 0
+        st.session_state[f"image_width_{i}"] = 600
+        st.session_state[f"padding_{i}"] = 0
+    
+    # Footer defaults
+    st.session_state["footer_image_url"] = ""
+    st.session_state["footer_image_base64"] = None
+    st.session_state["footer_image_width"] = 600
+    st.session_state["footer_image_position"] = "Above Text"
+    st.session_state["footer_image_source"] = "External URL"
+    st.session_state["footer_image_link_url"] = ""
+    st.session_state["footer_alignment"] = 0
+    st.session_state["footer_company_name"] = ""
+    st.session_state["footer_company_name_color"] = "#000000"
+    st.session_state["footer_company_name_size"] = 12
+    st.session_state["footer_company_name_bold"] = False
+    st.session_state["footer_address"] = ""
+    st.session_state["footer_address_color"] = "#000000"
+    st.session_state["footer_address_size"] = 12
+    st.session_state["footer_address_bold"] = False
+    st.session_state["footer_directors"] = ""
+    st.session_state["footer_directors_color"] = "#000000"
+    st.session_state["footer_directors_size"] = 12
+    st.session_state["footer_directors_bold"] = False
+    st.session_state["footer_bg_color"] = "#ffffff"
+    st.session_state["footer_social_label"] = ""
+    st.session_state["footer_social_label_color"] = "#000000"
+    st.session_state["footer_social_label_size"] = 14
+    st.session_state["footer_social_label_bold"] = True
+    st.session_state["footer_social_type"] = "URLs Only"
+    st.session_state["footer_social_image_width"] = 32
+    st.session_state["footer_facebook"] = ""
+    st.session_state["footer_facebook_image_base64"] = None
+    st.session_state["footer_linkedin"] = ""
+    st.session_state["footer_linkedin_image_base64"] = None
+    st.session_state["footer_xing"] = ""
+    st.session_state["footer_xing_image_base64"] = None
+    st.session_state["footer_instagram"] = ""
+    st.session_state["footer_instagram_image_base64"] = None
+    
+    # Subscription defaults
+    st.session_state["company_name"] = ""
+    st.session_state["address"] = ""
+    st.session_state["copyright_text"] = ""
+    st.session_state["disclaimer_text"] = ""
+    st.session_state["unsubscribe_link"] = ""
+    st.session_state["view_online_link"] = ""
+    st.session_state["footer_color"] = "#999999"
+    
+    st.session_state['force_reset_fields'] = False
+
 class MongoManager:
     """Manages MongoDB connection and operations for newsletter templates."""
     
@@ -925,6 +1043,10 @@ def render_sidebar() -> Dict:
     """
     with st.sidebar:
         st.header("📧 Newsletter Configuration")
+        if st.button("🧹 Clean Form", type="secondary"):
+            st.session_state['force_reset_fields'] = True
+            st.experimental_set_query_params(reset=str(int(time.time() * 1000)))
+            st.rerun()
         
         email_subject = st.text_input(
             "Email Subject",
@@ -1197,7 +1319,7 @@ def render_header_config(email_subject: str) -> Dict:
     # IMPORTANT: Initialize or ensure value exists BEFORE widget creation
     if "header_text" not in st.session_state:
         st.session_state["header_text"] = ""
-    # Check if template was loaded (indicated by temp key)
+    # Check if template was loaded (indicated by temp key) or a forced reset happened (header_text_version)
     if "_header_text_temp" in st.session_state:
         # Template was loaded, update the value and use a unique key to force reinitialization
         header_text_value = st.session_state["_header_text_temp"]
@@ -1207,8 +1329,10 @@ def render_header_config(email_subject: str) -> Dict:
             st.session_state["header_text_load_timestamp"] = 0
         st.session_state["header_text_load_timestamp"] = st.session_state.get("header_text_load_timestamp", 0) + 1
         del st.session_state["_header_text_temp"]
-        # Use unique key only when template was loaded
         widget_key = f"header_text_loaded_{st.session_state['header_text_load_timestamp']}"
+    elif st.session_state.get("header_text_version"):
+        # Forced reset: use a unique key so the client widget is recreated empty
+        widget_key = f"header_text_reset_{st.session_state['header_text_version']}"
     else:
         # Normal usage, use standard key
         widget_key = "header_text"
@@ -2524,6 +2648,9 @@ def main():
         layout="wide",
         initial_sidebar_state="expanded"
     )
+    
+    # Apply defaults if a full reset was requested (before rendering any widgets)
+    apply_reset_defaults()
     
     st.title("📧 Newsletter Builder")
     st.markdown("Create responsive HTML newsletters with dynamic content layers")
