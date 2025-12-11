@@ -2576,6 +2576,10 @@ def main():
     
     # Default option for selectbox (new template)
     default_option = "🆕 Generate New Template"
+    # If a next selection was scheduled (e.g., after save), apply it before widget creation
+    if st.session_state.get('template_selectbox_next'):
+        st.session_state['template_selectbox'] = st.session_state['template_selectbox_next']
+        del st.session_state['template_selectbox_next']
     selected_template_state = st.session_state.get('template_selectbox', default_option)
     
     # Check if a template is currently loaded
@@ -2646,25 +2650,18 @@ def main():
                 # Store flag to save after rendering
                 st.session_state['save_template_flag'] = True
                 st.session_state['template_name_to_save'] = template_name.strip()
-                # If updating, keep the loaded template name in session state
-                if is_update_mode:
-                    st.session_state['loaded_template_name'] = template_name.strip()
+                # Keep the loaded template name in session_state so the UI reflects "working with"
+                st.session_state['loaded_template_name'] = template_name.strip()
     
     with col_load:
         st.subheader("Load Template")
         
-        # Prepare options with default "---" option
-        if template_names:
-            selectbox_options = [default_option] + template_names
-        else:
-            selectbox_options = [default_option]
-        
-        # Get current selection or default to "---"
+        # Prepare options with default option and ensure current selection is preserved
         current_selection = st.session_state.get('template_selectbox', default_option)
-        # If current selection is not in options (e.g., template was deleted), reset to default
-        if current_selection not in selectbox_options:
-            current_selection = default_option
-            st.session_state['template_selectbox'] = default_option
+        selectbox_options = [default_option] + template_names
+        # If the current selection is not in the loaded list and is not the default, keep it to show it selected
+        if current_selection not in selectbox_options and current_selection != default_option:
+            selectbox_options.append(current_selection)
         
         selected_template = st.selectbox(
             "Select Template",
@@ -2840,6 +2837,8 @@ def main():
                 # Store success message to show at the top
                 st.session_state['template_save_success_message'] = f"✅ Template '{template_name}' saved successfully!"
                 st.session_state['template_save_success_message_time'] = time.time()
+                # Schedule the selectbox to show the saved/updated template on next render
+                st.session_state['template_selectbox_next'] = template_name
                 # Rerun to show the message at the top
                 st.rerun()
     
