@@ -1109,7 +1109,7 @@ def render_header_config(email_subject: str) -> Dict:
             # Display image preview if URL is provided
             if header_image_url and header_image_url.strip():
                 try:
-                    st.image(header_image_url, width=None, use_container_width=False)
+                    st.image(header_image_url, width='content')
                 except Exception as e:
                     st.warning(f"Could not display the image: {str(e)}")
             # If URL is empty but we have base64, use base64 instead
@@ -1123,7 +1123,7 @@ def render_header_config(email_subject: str) -> Dict:
                 st.info("ℹ️ Image loaded from saved template")
                 # Display the loaded image
                 try:
-                    st.image(existing_base64, width=None, use_container_width=False)
+                    st.image(existing_base64, width='content')
                 except Exception as e:
                     st.warning(f"Could not display the image: {str(e)}")
                 header_image_base64 = existing_base64
@@ -1357,7 +1357,7 @@ def render_footer_config() -> Dict:
             # Display image preview if URL is provided
             if footer_image_url and footer_image_url.strip():
                 try:
-                    st.image(footer_image_url, width=None, use_container_width=False)
+                    st.image(footer_image_url, width='content')
                 except Exception as e:
                     st.warning(f"Could not display the image: {str(e)}")
             # If URL is empty but we have base64, use base64 instead
@@ -1371,7 +1371,7 @@ def render_footer_config() -> Dict:
                 st.info("ℹ️ Image loaded from saved template")
                 # Display the loaded image
                 try:
-                    st.image(existing_base64, width=None, use_container_width=False)
+                    st.image(existing_base64, width='content')
                 except Exception as e:
                     st.warning(f"Could not display the image: {str(e)}")
                 footer_image_base64 = existing_base64
@@ -2119,7 +2119,7 @@ def render_layer_form(layer_number: int) -> Dict:
             # Display image preview if URL is provided
             if image_url and image_url.strip():
                 try:
-                    st.image(image_url, width=None, use_container_width=False)
+                    st.image(image_url, width='content')
                 except Exception as e:
                     st.warning(f"Could not display the image: {str(e)}")
             # If URL is empty but we have base64, use base64 instead
@@ -2135,7 +2135,7 @@ def render_layer_form(layer_number: int) -> Dict:
                 try:
                     col_img_left, col_img_right = st.columns([2, 3])
                     with col_img_left:
-                        st.image(existing_base64, width=None, use_container_width=True)
+                        st.image(existing_base64, width='stretch')
                 except Exception as e:
                     st.warning(f"Could not display the image: {str(e)}")
                 image_base64 = existing_base64
@@ -2575,7 +2575,7 @@ def main():
             help="Enter a unique name for this template",
             placeholder="e.g., Monthly Newsletter Template"
         )
-        if st.button("💾 Save Template", type="primary", use_container_width=True):
+        if st.button("💾 Save Template", type="primary", width='stretch'):
             if not template_name or not template_name.strip():
                 st.error("⚠️ Please enter a name for the template.")
             else:
@@ -2603,7 +2603,7 @@ def main():
             col_load_btn, col_delete_btn = st.columns(2)
             
             with col_load_btn:
-                if st.button("📂 Load Template", type="secondary", use_container_width=True):
+                if st.button("📂 Load Template", type="secondary", width='stretch'):
                     template_data = mongo_manager.load_template_data(selected_template)
                     if template_data:
                         apply_template_to_session_state(template_data)
@@ -2616,7 +2616,7 @@ def main():
                         st.error("⚠️ Error loading the template.")
             
             with col_delete_btn:
-                if st.button("🗑️ Delete Template", type="secondary", use_container_width=True):
+                if st.button("🗑️ Delete Template", type="secondary", width='stretch'):
                     # First confirmation: Set flag to show delete confirmation dialog
                     st.session_state['show_delete_confirmation'] = True
                     st.session_state['template_to_delete'] = selected_template
@@ -2636,7 +2636,7 @@ def main():
                 col_confirm, col_cancel = st.columns(2)
                 
                 with col_confirm:
-                    if st.button("🗑️ Confirm Delete", type="primary", use_container_width=True, disabled=not confirm_checkbox):
+                    if st.button("🗑️ Confirm Delete", type="primary", width='stretch', disabled=not confirm_checkbox):
                         if confirm_checkbox:
                             success = mongo_manager.delete_template(selected_template)
                             if success:
@@ -2652,7 +2652,7 @@ def main():
                                 st.error("⚠️ Error deleting the template.")
                 
                 with col_cancel:
-                    if st.button("❌ Cancel", use_container_width=True):
+                    if st.button("❌ Cancel", width='stretch'):
                         # Clear confirmation flags
                         st.session_state['show_delete_confirmation'] = False
                         st.session_state['template_to_delete'] = None
@@ -2702,7 +2702,7 @@ def main():
         st.divider()
     
     # Generate Newsletter button
-    if st.button("🚀 Generate Newsletter", type="primary", use_container_width=True):
+    if st.button("🚀 Generate Newsletter", type="primary", width='stretch'):
         # Validate layer orders again before generating
         orders = [layer.get('order', i) for i, layer in enumerate(layers, start=1)]
         duplicate_orders = [order for order in set(orders) if orders.count(order) > 1]
@@ -2742,15 +2742,16 @@ def main():
                 footer_config=footer_config,
                 subscription_config=subscription_config
             )
+            # Clear the flag BEFORE rerun to prevent infinite loop
+            st.session_state['save_template_flag'] = False
+            st.session_state['template_name_to_save'] = ''
+            
             if success:
                 # Store success message to show at the top
                 st.session_state['template_save_success_message'] = f"✅ Template '{template_name}' saved successfully!"
                 st.session_state['template_save_success_message_time'] = time.time()
                 # Rerun to show the message at the top
                 st.rerun()
-            # Clear the flag
-            st.session_state['save_template_flag'] = False
-            st.session_state['template_name_to_save'] = ''
     
     # Preview and Download section
     if 'newsletter_html' in st.session_state:
@@ -2773,7 +2774,7 @@ def main():
             data=st.session_state['newsletter_html'],
             file_name=filename,
             mime="text/html",
-            use_container_width=True
+            width='stretch'
         )
 
 
