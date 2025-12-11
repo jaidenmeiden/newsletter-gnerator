@@ -2761,9 +2761,6 @@ def main():
             if not template_name or not template_name.strip():
                 st.error("⚠️ Please enter a name for the template.")
             else:
-                # Get MongoDB manager
-                mongo_manager = get_mongo_manager()
-                
                 # We need to collect all data first, but we'll do it after rendering
                 # Store flag to save after rendering
                 st.session_state['save_template_flag'] = True
@@ -2941,7 +2938,6 @@ def main():
     if st.session_state.get('save_template_flag', False):
         template_name = st.session_state.get('template_name_to_save', '')
         if template_name:
-            mongo_manager = get_mongo_manager()
             success = mongo_manager.save_template(
                 name=template_name,
                 config=config,
