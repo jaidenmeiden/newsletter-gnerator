@@ -1294,9 +1294,12 @@ def parse_html_template(html_content: str) -> Optional[Dict]:
         font_family_match = re.search(r'font-family:\s*([^;]+)', body_style)
         font_family = font_family_match.group(1).strip() if font_family_match else "Oswald, sans-serif"
         
-        # Extract max width from inner table
-        inner_table = soup.find('table', {'role': 'presentation'})
+        # Extract max width from inner table (the one inside td align="center")
+        center_td = soup.find('td', {'align': 'center'})
+        inner_table = None
         max_width = 1000  # default
+        if center_td:
+            inner_table = center_td.find('table', {'role': 'presentation'})
         if inner_table:
             style = inner_table.get('style', '')
             width_match = re.search(r'width:\s*(\d+)px', style)
@@ -1314,12 +1317,12 @@ def parse_html_template(html_content: str) -> Optional[Dict]:
         # Extract text color (will be extracted from layers/header)
         text_color = "#000000"  # default
         
-        # Parse header
+        # Parse header using class="header_template"
         header_config = {}
-        all_trs = soup.find_all('tr')
+        header_trs = soup.find_all('tr', class_='header_template')
         
-        # Find pre-header (hidden text)
-        for tr in all_trs:
+        # Find pre-header (hidden text) - first header_template tr with display: none
+        for tr in header_trs:
             td = tr.find('td')
             if td and 'display: none' in td.get('style', ''):
                 span = td.find('span')
@@ -1329,10 +1332,9 @@ def parse_html_template(html_content: str) -> Optional[Dict]:
                         header_config['pre_header_text'] = pre_header
                         break
         
-        # Find header image (first img before header content)
-        header_image = None
+        # Find header image (first img in header_template tr)
         header_image_width = 600
-        for tr in all_trs:
+        for tr in header_trs:
             img = tr.find('img')
             if img:
                 src = img.get('src', '')
@@ -1351,44 +1353,44 @@ def parse_html_template(html_content: str) -> Optional[Dict]:
                     header_config['header_image_width'] = header_image_width
                     break
         
-        # Find header title (first h1)
-        h1 = soup.find('h1')
-        if h1:
-            header_config['header_title'] = h1.get_text(strip=True)
-            style = h1.get('style', '')
-            # Extract title color
-            color_match = re.search(r'color:\s*([^;]+)', style)
-            if color_match:
-                header_config['title_color'] = color_match.group(1).strip()
-            # Extract font size
-            size_match = re.search(r'font-size:\s*(\d+)px', style)
-            if size_match:
-                header_config['title_font_size'] = int(size_match.group(1))
-            # Extract font weight
-            weight_match = re.search(r'font-weight:\s*(\d+)', style)
-            if weight_match:
-                header_config['title_bold'] = weight_match.group(1) == '700'
-            else:
-                header_config['title_bold'] = True
+        # Find header title (h1 in header_template tr)
+        h1 = None
+        for tr in header_trs:
+            h1 = tr.find('h1')
+            if h1:
+                header_config['header_title'] = h1.get_text(strip=True)
+                style = h1.get('style', '')
+                # Extract title color
+                color_match = re.search(r'color:\s*([^;]+)', style)
+                if color_match:
+                    header_config['title_color'] = color_match.group(1).strip()
+                # Extract font size
+                size_match = re.search(r'font-size:\s*(\d+)px', style)
+                if size_match:
+                    header_config['title_font_size'] = int(size_match.group(1))
+                # Extract font weight
+                weight_match = re.search(r'font-weight:\s*(\d+)', style)
+                if weight_match:
+                    header_config['title_bold'] = weight_match.group(1) == '700'
+                else:
+                    header_config['title_bold'] = True
+                break
         
-        # Find header text (div with ql-content or p after h1)
+        # Find header text (div with ql-content or p in header_template tr)
         header_text_div = None
-        if h1:
-            # Look for div or p after h1 in the same tr or next tr
-            for tr in all_trs:
-                td = tr.find('td')
-                if td:
-                    div = td.find('div', class_='ql-content')
-                    if div:
-                        header_text_div = div
-                        break
-                    p = td.find('p')
-                    if p and p.get_text(strip=True):
-                        header_text_div = p
-                        break
+        for tr in header_trs:
+            td = tr.find('td')
+            if td:
+                div = td.find('div', class_='ql-content')
+                if div:
+                    header_text_div = div
+                    break
+                p = td.find('p')
+                if p and p.get_text(strip=True):
+                    header_text_div = p
+                    break
         
         if header_text_div:
-            header_text_html = str(header_text_div)
             # Clean up the HTML - extract inner HTML content
             if header_text_div.name == 'div':
                 # For div, get the inner HTML
@@ -1405,11 +1407,11 @@ def parse_html_template(html_content: str) -> Optional[Dict]:
             if size_match:
                 header_config['text_font_size'] = int(size_match.group(1))
         
-        # Extract header background color
+        # Extract header background color from header_template tr
         header_bg_color = "#ffffff"
-        for tr in all_trs:
+        for tr in header_trs:
             td = tr.find('td')
-            if td and h1 and h1 in td.find_all(['h1', 'div', 'p']):
+            if td and 'background-color' in td.get('style', ''):
                 style = td.get('style', '')
                 bg_match = re.search(r'background-color:\s*([^;]+)', style)
                 if bg_match:
@@ -1417,17 +1419,9 @@ def parse_html_template(html_content: str) -> Optional[Dict]:
                     break
         header_config['header_bg_color'] = header_bg_color
         
-        # Parse layers
+        # Parse layers using class="layer_template"
         layers = []
-        # Find all layer sections (tr with padding that contains h2 or images)
-        layer_trs = []
-        for tr in all_trs:
-            td = tr.find('td')
-            if td:
-                style = td.get('style', '')
-                # Check if this is a layer (has padding and contains content)
-                if 'padding:' in style and ('h2' in str(td) or 'img' in str(td)):
-                    layer_trs.append(tr)
+        layer_trs = soup.find_all('tr', class_='layer_template')
         
         for layer_tr in layer_trs:
             layer = {}
@@ -1558,23 +1552,11 @@ def parse_html_template(html_content: str) -> Optional[Dict]:
             
             layers.append(layer)
         
-        # Parse footer
+        # Parse footer using class="footer_template"
         footer_config = {}
-        # Find footer section (usually after layers, before subscription)
-        footer_trs = []
-        found_footer = False
-        for tr in all_trs:
-            td = tr.find('td')
-            if td:
-                style = td.get('style', '')
-                # Footer typically has padding and contains company info or social media
-                if 'padding:' in style and ('30px' in style or '20px' in style):
-                    # Check if it contains footer-like content
-                    if td.find('img') or 'company' in str(td).lower() or 'social' in str(td).lower():
-                        footer_trs.append(tr)
-                        found_footer = True
+        footer_trs = soup.find_all('tr', class_='footer_template')
         
-        if found_footer and footer_trs:
+        if footer_trs:
             footer_td = footer_trs[0].find('td')
             if footer_td:
                 # Extract background color
@@ -1694,6 +1676,7 @@ def parse_html_template(html_content: str) -> Optional[Dict]:
         # Parse subscription section
         subscription_config = {}
         # Find subscription section (usually last, contains unsubscribe links)
+        all_trs = soup.find_all('tr')
         for tr in all_trs:
             td = tr.find('td')
             if td:
