@@ -3895,7 +3895,7 @@ def main():
             filename = f"{template_name.replace(' ', '_')}.html"
         else:
             # Fallback to subject if no template name available
-            filename = f"{st.session_state['newsletter_subject'].replace(' ', '_')}_newsletter.html"
+            filename = f"{st.session_state['newsletter_subject'].replace(' ', '_')}_no_name.html"
         
         st.download_button(
             label="📥 Download HTML File",
