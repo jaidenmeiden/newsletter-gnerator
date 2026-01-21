@@ -5,10 +5,12 @@ A web application for generating responsive HTML newsletters with dynamic conten
 
 import base64
 import io
+import re
 import time
 from typing import Dict, List, Optional
 
 import streamlit as st
+from bs4 import BeautifulSoup
 from PIL import Image
 from streamlit_quill import st_quill
 from pymongo import MongoClient
@@ -1259,6 +1261,495 @@ class NewsletterGenerator:
         return html_parts
 
 
+def parse_html_template(html_content: str) -> Optional[Dict]:
+    """
+    Parse exported HTML newsletter and extract all configuration data.
+    
+    Args:
+        html_content: HTML string from exported newsletter file
+        
+    Returns:
+        Dictionary with template configuration (config, header_config, layers, footer_config, subscription_config)
+        or None if parsing fails
+    """
+    try:
+        soup = BeautifulSoup(html_content, 'html.parser')
+        
+        # Extract subject from <title>
+        title_tag = soup.find('title')
+        subject = title_tag.get_text(strip=True) if title_tag else ""
+        
+        # Extract styles from body tag
+        body = soup.find('body')
+        body_style = body.get('style', '') if body else ''
+        
+        # Extract font family from body style
+        font_family_match = re.search(r'font-family:\s*([^;]+)', body_style)
+        font_family = font_family_match.group(1).strip() if font_family_match else "Oswald, sans-serif"
+        
+        # Extract max width from inner table
+        inner_table = soup.find('table', {'role': 'presentation'})
+        max_width = 1000  # default
+        if inner_table:
+            style = inner_table.get('style', '')
+            width_match = re.search(r'width:\s*(\d+)px', style)
+            if width_match:
+                max_width = int(width_match.group(1))
+        
+        # Extract background color from inner table
+        background_color = "#FFFFFF"  # default
+        if inner_table:
+            style = inner_table.get('style', '')
+            bg_match = re.search(r'background-color:\s*([^;]+)', style)
+            if bg_match:
+                background_color = bg_match.group(1).strip()
+        
+        # Extract text color (will be extracted from layers/header)
+        text_color = "#000000"  # default
+        
+        # Parse header
+        header_config = {}
+        all_trs = soup.find_all('tr')
+        
+        # Find pre-header (hidden text)
+        for tr in all_trs:
+            td = tr.find('td')
+            if td and 'display: none' in td.get('style', ''):
+                span = td.find('span')
+                if span:
+                    pre_header = span.get_text(strip=True)
+                    if pre_header:
+                        header_config['pre_header_text'] = pre_header
+                        break
+        
+        # Find header image (first img before header content)
+        header_image = None
+        header_image_width = 600
+        for tr in all_trs:
+            img = tr.find('img')
+            if img:
+                src = img.get('src', '')
+                if src:
+                    if src.startswith('data:image'):
+                        header_config['header_image_base64'] = src
+                        header_config['header_image_source'] = "Upload Image (Base64)"
+                    else:
+                        header_config['header_image_url'] = src
+                        header_config['header_image_source'] = "External URL"
+                    # Extract width
+                    style = img.get('style', '')
+                    width_match = re.search(r'max-width:\s*(\d+)px', style)
+                    if width_match:
+                        header_image_width = int(width_match.group(1))
+                    header_config['header_image_width'] = header_image_width
+                    break
+        
+        # Find header title (first h1)
+        h1 = soup.find('h1')
+        if h1:
+            header_config['header_title'] = h1.get_text(strip=True)
+            style = h1.get('style', '')
+            # Extract title color
+            color_match = re.search(r'color:\s*([^;]+)', style)
+            if color_match:
+                header_config['title_color'] = color_match.group(1).strip()
+            # Extract font size
+            size_match = re.search(r'font-size:\s*(\d+)px', style)
+            if size_match:
+                header_config['title_font_size'] = int(size_match.group(1))
+            # Extract font weight
+            weight_match = re.search(r'font-weight:\s*(\d+)', style)
+            if weight_match:
+                header_config['title_bold'] = weight_match.group(1) == '700'
+            else:
+                header_config['title_bold'] = True
+        
+        # Find header text (div with ql-content or p after h1)
+        header_text_div = None
+        if h1:
+            # Look for div or p after h1 in the same tr or next tr
+            for tr in all_trs:
+                td = tr.find('td')
+                if td:
+                    div = td.find('div', class_='ql-content')
+                    if div:
+                        header_text_div = div
+                        break
+                    p = td.find('p')
+                    if p and p.get_text(strip=True):
+                        header_text_div = p
+                        break
+        
+        if header_text_div:
+            header_text_html = str(header_text_div)
+            # Clean up the HTML - extract inner HTML content
+            if header_text_div.name == 'div':
+                # For div, get the inner HTML
+                header_text_html = ''.join(str(child) for child in header_text_div.children)
+            elif header_text_div.name == 'p':
+                # For p, get the text or inner HTML
+                header_text_html = header_text_div.get_text(strip=True)
+            header_config['header_text'] = header_text_html
+            style = header_text_div.get('style', '')
+            color_match = re.search(r'color:\s*([^;]+)', style)
+            if color_match:
+                header_config['text_color'] = color_match.group(1).strip()
+            size_match = re.search(r'font-size:\s*(\d+)px', style)
+            if size_match:
+                header_config['text_font_size'] = int(size_match.group(1))
+        
+        # Extract header background color
+        header_bg_color = "#ffffff"
+        for tr in all_trs:
+            td = tr.find('td')
+            if td and h1 and h1 in td.find_all(['h1', 'div', 'p']):
+                style = td.get('style', '')
+                bg_match = re.search(r'background-color:\s*([^;]+)', style)
+                if bg_match:
+                    header_bg_color = bg_match.group(1).strip()
+                    break
+        header_config['header_bg_color'] = header_bg_color
+        
+        # Parse layers
+        layers = []
+        # Find all layer sections (tr with padding that contains h2 or images)
+        layer_trs = []
+        for tr in all_trs:
+            td = tr.find('td')
+            if td:
+                style = td.get('style', '')
+                # Check if this is a layer (has padding and contains content)
+                if 'padding:' in style and ('h2' in str(td) or 'img' in str(td)):
+                    layer_trs.append(tr)
+        
+        for layer_tr in layer_trs:
+            layer = {}
+            td = layer_tr.find('td')
+            if not td:
+                continue
+            
+            # Extract padding
+            style = td.get('style', '')
+            padding_match = re.search(r'padding:\s*(\d+)px', style)
+            if padding_match:
+                layer['padding'] = int(padding_match.group(1))
+            
+            # Find inner table for image/text layout
+            inner_table = td.find('table', {'role': 'presentation'})
+            if not inner_table:
+                continue
+            
+            # Determine image alignment
+            tds = inner_table.find_all('td')
+            image_td = None
+            text_td = None
+            for td_elem in tds:
+                if td_elem.find('img'):
+                    image_td = td_elem
+                elif td_elem.find(['h2', 'h3', 'h4', 'div', 'p']):
+                    text_td = td_elem
+            
+            # Determine alignment based on order
+            if image_td and text_td:
+                image_index = tds.index(image_td)
+                text_index = tds.index(text_td)
+                layer['image_alignment'] = 'left' if image_index < text_index else 'right'
+            else:
+                layer['image_alignment'] = 'left'
+            
+            # Extract image
+            img = inner_table.find('img')
+            if img:
+                src = img.get('src', '')
+                if src:
+                    if src.startswith('data:image'):
+                        layer['image_base64'] = src
+                        layer['image_source'] = "Upload Image (Base64)"
+                    else:
+                        layer['image_url'] = src
+                        layer['image_source'] = "External URL"
+                    width_match = re.search(r'width="(\d+)"', str(img))
+                    if width_match:
+                        layer['image_width'] = int(width_match.group(1))
+            
+            # Extract link URL if present
+            link = inner_table.find('a')
+            if link:
+                layer['link_url'] = link.get('href', '')
+            
+            # Extract text content
+            h2 = inner_table.find('h2')
+            if h2:
+                layer['title'] = h2.get_text(strip=True)
+                style = h2.get('style', '')
+                color_match = re.search(r'color:\s*([^;]+)', style)
+                if color_match:
+                    layer['title_color'] = color_match.group(1).strip()
+                size_match = re.search(r'font-size:\s*(\d+)px', style)
+                if size_match:
+                    layer['title_font_size'] = int(size_match.group(1))
+                weight_match = re.search(r'font-weight:\s*(\d+)', style)
+                if weight_match:
+                    layer['title_bold'] = weight_match.group(1) == '700'
+            
+            h3 = inner_table.find('h3')
+            if h3:
+                layer['subtitle'] = h3.get_text(strip=True)
+                style = h3.get('style', '')
+                color_match = re.search(r'color:\s*([^;]+)', style)
+                if color_match:
+                    layer['subtitle_color'] = color_match.group(1).strip()
+                size_match = re.search(r'font-size:\s*(\d+)px', style)
+                if size_match:
+                    layer['subtitle_font_size'] = int(size_match.group(1))
+                weight_match = re.search(r'font-weight:\s*(\d+)', style)
+                if weight_match:
+                    layer['subtitle_bold'] = weight_match.group(1) == '600'
+            
+            h4 = inner_table.find('h4')
+            if h4:
+                layer['subtitle2'] = h4.get_text(strip=True)
+                style = h4.get('style', '')
+                color_match = re.search(r'color:\s*([^;]+)', style)
+                if color_match:
+                    layer['subtitle2_color'] = color_match.group(1).strip()
+                size_match = re.search(r'font-size:\s*(\d+)px', style)
+                if size_match:
+                    layer['subtitle2_font_size'] = int(size_match.group(1))
+                weight_match = re.search(r'font-weight:\s*(\d+)', style)
+                if weight_match:
+                    layer['subtitle2_bold'] = weight_match.group(1) == '500'
+            
+            # Extract content (div.ql-content or p)
+            content_div = inner_table.find('div', class_='ql-content')
+            if content_div:
+                # Extract inner HTML content (not the div wrapper)
+                layer['content'] = ''.join(str(child) for child in content_div.children)
+                style = content_div.get('style', '')
+                color_match = re.search(r'color:\s*([^;]+)', style)
+                if color_match:
+                    layer['content_color'] = color_match.group(1).strip()
+                    text_color = color_match.group(1).strip()  # Update global text color
+                size_match = re.search(r'font-size:\s*(\d+)px', style)
+                if size_match:
+                    layer['content_font_size'] = int(size_match.group(1))
+            else:
+                p = inner_table.find('p')
+                if p:
+                    layer['content'] = p.get_text(strip=True)
+                    style = p.get('style', '')
+                    color_match = re.search(r'color:\s*([^;]+)', style)
+                    if color_match:
+                        layer['content_color'] = color_match.group(1).strip()
+                        text_color = color_match.group(1).strip()
+                    size_match = re.search(r'font-size:\s*(\d+)px', style)
+                    if size_match:
+                        layer['content_font_size'] = int(size_match.group(1))
+            
+            # Set default order (will be set based on position)
+            layer['order'] = len(layers) + 1
+            
+            layers.append(layer)
+        
+        # Parse footer
+        footer_config = {}
+        # Find footer section (usually after layers, before subscription)
+        footer_trs = []
+        found_footer = False
+        for tr in all_trs:
+            td = tr.find('td')
+            if td:
+                style = td.get('style', '')
+                # Footer typically has padding and contains company info or social media
+                if 'padding:' in style and ('30px' in style or '20px' in style):
+                    # Check if it contains footer-like content
+                    if td.find('img') or 'company' in str(td).lower() or 'social' in str(td).lower():
+                        footer_trs.append(tr)
+                        found_footer = True
+        
+        if found_footer and footer_trs:
+            footer_td = footer_trs[0].find('td')
+            if footer_td:
+                # Extract background color
+                style = footer_td.get('style', '')
+                bg_match = re.search(r'background-color:\s*([^;]+)', style)
+                if bg_match:
+                    footer_config['footer_bg_color'] = bg_match.group(1).strip()
+                
+                # Extract alignment
+                align_match = re.search(r'text-align:\s*([^;]+)', style)
+                if align_match:
+                    footer_config['footer_alignment'] = align_match.group(1).strip()
+                
+                # Extract footer image
+                footer_img = footer_td.find('img')
+                if footer_img:
+                    src = footer_img.get('src', '')
+                    if src:
+                        if src.startswith('data:image'):
+                            footer_config['footer_image_base64'] = src
+                            footer_config['footer_image_source'] = "Upload Image (Base64)"
+                        else:
+                            footer_config['footer_image_url'] = src
+                            footer_config['footer_image_source'] = "External URL"
+                        width_match = re.search(r'width="(\d+)"', str(footer_img))
+                        if width_match:
+                            footer_config['footer_image_width'] = int(width_match.group(1))
+                
+                # Extract company name, address, directors
+                ps = footer_td.find_all('p')
+                for p in ps:
+                    text = p.get_text(strip=True)
+                    style = p.get('style', '')
+                    size_match = re.search(r'font-size:\s*(\d+)px', style)
+                    if size_match:
+                        size = int(size_match.group(1))
+                        # Company name is usually first, address second, directors third
+                        if not footer_config.get('company_name') and size >= 12:
+                            footer_config['company_name'] = text
+                            color_match = re.search(r'color:\s*([^;]+)', style)
+                            if color_match:
+                                footer_config['company_name_color'] = color_match.group(1).strip()
+                            footer_config['company_name_size'] = size
+                            weight_match = re.search(r'font-weight:\s*(\d+)', style)
+                            if weight_match:
+                                footer_config['company_name_bold'] = weight_match.group(1) == '700'
+                        elif not footer_config.get('address') and text and '\n' in text:
+                            footer_config['address'] = text
+                            color_match = re.search(r'color:\s*([^;]+)', style)
+                            if color_match:
+                                footer_config['address_color'] = color_match.group(1).strip()
+                            footer_config['address_size'] = size
+                            weight_match = re.search(r'font-weight:\s*(\d+)', style)
+                            if weight_match:
+                                footer_config['address_bold'] = weight_match.group(1) == '700'
+                        elif not footer_config.get('directors'):
+                            footer_config['directors'] = text
+                            color_match = re.search(r'color:\s*([^;]+)', style)
+                            if color_match:
+                                footer_config['directors_color'] = color_match.group(1).strip()
+                            footer_config['directors_size'] = size
+                            weight_match = re.search(r'font-weight:\s*(\d+)', style)
+                            if weight_match:
+                                footer_config['directors_bold'] = weight_match.group(1) == '700'
+                
+                # Extract social media
+                social_label_p = footer_td.find('p')
+                if social_label_p and 'social' in social_label_p.get_text(strip=True).lower():
+                    footer_config['social_media_label'] = social_label_p.get_text(strip=True)
+                    style = social_label_p.get('style', '')
+                    color_match = re.search(r'color:\s*([^;]+)', style)
+                    if color_match:
+                        footer_config['social_label_color'] = color_match.group(1).strip()
+                    size_match = re.search(r'font-size:\s*(\d+)px', style)
+                    if size_match:
+                        footer_config['social_label_size'] = int(size_match.group(1))
+                
+                # Check for social media images or links
+                social_imgs = footer_td.find_all('img', alt=True)
+                if social_imgs:
+                    footer_config['social_media_type'] = "Images"
+                    for img in social_imgs:
+                        alt = img.get('alt', '').lower()
+                        src = img.get('src', '')
+                        link = img.find_parent('a')
+                        if link:
+                            url = link.get('href', '')
+                            if 'facebook' in alt and src.startswith('data:image'):
+                                footer_config['facebook_image_base64'] = src
+                                footer_config['facebook_url'] = url
+                            elif 'linkedin' in alt and src.startswith('data:image'):
+                                footer_config['linkedin_image_base64'] = src
+                                footer_config['linkedin_url'] = url
+                            elif 'xing' in alt and src.startswith('data:image'):
+                                footer_config['xing_image_base64'] = src
+                                footer_config['xing_url'] = url
+                            elif 'instagram' in alt and src.startswith('data:image'):
+                                footer_config['instagram_image_base64'] = src
+                                footer_config['instagram_url'] = url
+                else:
+                    # Check for text links
+                    social_links = footer_td.find_all('a')
+                    if social_links:
+                        footer_config['social_media_type'] = "URLs Only"
+                        for link in social_links:
+                            url = link.get('href', '')
+                            text = link.get_text(strip=True).lower()
+                            if 'facebook' in text:
+                                footer_config['facebook_url'] = url
+                            elif 'linkedin' in text:
+                                footer_config['linkedin_url'] = url
+                            elif 'xing' in text:
+                                footer_config['xing_url'] = url
+                            elif 'instagram' in text:
+                                footer_config['instagram_url'] = url
+        
+        # Parse subscription section
+        subscription_config = {}
+        # Find subscription section (usually last, contains unsubscribe links)
+        for tr in all_trs:
+            td = tr.find('td')
+            if td:
+                text = td.get_text(strip=True)
+                if 'unsubscribe' in text.lower() or 'view online' in text.lower():
+                    # Extract footer color
+                    style = td.get('style', '')
+                    color_match = re.search(r'color:\s*([^;]+)', style)
+                    if color_match:
+                        subscription_config['footer_color'] = color_match.group(1).strip()
+                    
+                    # Extract disclaimer, copyright, address
+                    text_parts = text.split('\n')
+                    for part in text_parts:
+                        part = part.strip()
+                        if part and 'disclaimer' not in part.lower() and 'copyright' not in part.lower() and 'unsubscribe' not in part.lower() and 'view online' not in part.lower():
+                            if not subscription_config.get('disclaimer_text'):
+                                subscription_config['disclaimer_text'] = part
+                            elif not subscription_config.get('copyright_text'):
+                                subscription_config['copyright_text'] = part
+                            elif not subscription_config.get('address'):
+                                subscription_config['address'] = part
+                    
+                    # Extract links
+                    unsubscribe_link = td.find('a', string=re.compile('unsubscribe', re.I))
+                    if unsubscribe_link:
+                        subscription_config['unsubscribe_link'] = unsubscribe_link.get('href', '')
+                    
+                    view_online_link = td.find('a', string=re.compile('view online', re.I))
+                    if view_online_link:
+                        subscription_config['view_online_link'] = view_online_link.get('href', '')
+                    
+                    # Extract company name from copyright
+                    copyright_text = subscription_config.get('copyright_text', '')
+                    if copyright_text:
+                        company_match = re.search(r'©\s*\d+\s+(.+)\.', copyright_text)
+                        if company_match:
+                            subscription_config['company_name'] = company_match.group(1).strip()
+        
+        # Build config dictionary
+        config = {
+            'email_subject': subject,
+            'background_color': background_color,
+            'text_color': text_color,
+            'max_width': max_width,
+            'font_family': font_family,
+            'num_layers': len(layers),
+            'include_subscription': bool(subscription_config)
+        }
+        
+        return {
+            'config': config,
+            'header_config': header_config,
+            'layers': layers,
+            'footer_config': footer_config,
+            'subscription_config': subscription_config if subscription_config else None
+        }
+        
+    except Exception as e:
+        st.error(f"Error parsing HTML template: {str(e)}")
+        return None
+
+
 def render_sidebar() -> Dict:
     """
     Render sidebar configuration inputs.
@@ -1268,6 +1759,49 @@ def render_sidebar() -> Dict:
     """
     with st.sidebar:
         st.header("📧 Newsletter Configuration")
+        
+        # Import Template section
+        st.subheader("📥 Import Template")
+        uploaded_file = st.file_uploader(
+            "Select HTML Template File",
+            type=['html', 'htm'],
+            help="Upload an exported HTML newsletter template file",
+            key="import_template_file"
+        )
+        
+        if st.button("📥 Import Template", type="primary", disabled=uploaded_file is None):
+            if uploaded_file is not None:
+                try:
+                    # Read the HTML content
+                    html_content = uploaded_file.read().decode('utf-8')
+                    
+                    # First, clean the form (execute Clean Form process)
+                    st.session_state['force_reset_fields'] = True
+                    apply_reset_defaults()
+                    
+                    # Parse the HTML and extract configuration
+                    template_data = parse_html_template(html_content)
+                    
+                    if template_data:
+                        # Apply the parsed data to session_state (without setting mode to "loaded")
+                        apply_imported_template_to_session_state(template_data)
+                        
+                        # Store success message
+                        st.session_state['template_import_success_message'] = f"✅ Template imported successfully from '{uploaded_file.name}'!"
+                        st.session_state['template_import_success_message_time'] = time.time()
+                        
+                        # Clear the uploaded file from session state
+                        st.session_state['import_template_file'] = None
+                        
+                        # Rerun to show the imported data
+                        rerun_after("import_template_success")
+                    else:
+                        st.error("⚠️ Failed to parse the HTML template. Please ensure it's a valid exported newsletter file.")
+                except Exception as e:
+                    st.error(f"⚠️ Error importing template: {str(e)}")
+        
+        st.divider()
+        
         if st.button("🧹 Clean Form", type="secondary"):
             st.session_state['force_reset_fields'] = True
             st.experimental_set_query_params(reset=str(int(time.time() * 1000)))
@@ -2493,6 +3027,256 @@ def render_layer_form(layer_number: int) -> Dict:
     }
 
 
+def apply_imported_template_to_session_state(template_data: dict):
+    """
+    Apply imported HTML template data to Streamlit session_state.
+    Similar to apply_template_to_session_state but does NOT set mode to "loaded"
+    so Template Name remains empty and button shows "Save Template".
+    
+    Args:
+        template_data: Dictionary containing template configuration from parsed HTML
+    """
+    # Do NOT set mode to loaded - keep it in "new" mode so Template Name stays empty
+    config = template_data.get('config', {})
+    header_config = template_data.get('header_config', {})
+    layers = template_data.get('layers', [])
+    footer_config = template_data.get('footer_config', {})
+    subscription_config = template_data.get('subscription_config', {})
+    
+    # Apply basic config to session_state (same as apply_template_to_session_state)
+    if 'email_subject' in config:
+        st.session_state['Email Subject'] = str(config['email_subject']) if config['email_subject'] is not None else ""
+    if 'num_layers' in config:
+        st.session_state['Number of Layers'] = int(config['num_layers'])
+    if 'max_width' in config:
+        st.session_state['Maximum Newsletter Width (px)'] = int(config['max_width'])
+    if 'font_family' in config:
+        font_options = [
+            "Oswald, sans-serif",
+            "Arial, sans-serif",
+            "Helvetica, sans-serif",
+            "Georgia, serif",
+            "Times New Roman, serif",
+            "Verdana, sans-serif",
+            "Courier New, monospace",
+            "Trebuchet MS, sans-serif",
+            "Comic Sans MS, cursive"
+        ]
+        font_family_str = str(config['font_family']) if config['font_family'] is not None else ""
+        if font_family_str in font_options:
+            st.session_state['Font Family'] = int(font_options.index(font_family_str))
+        else:
+            st.session_state['Font Family'] = 0
+    if 'background_color' in config:
+        st.session_state['Background Color'] = str(config['background_color']) if config['background_color'] is not None else "#FFFFFF"
+    if 'text_color' in config:
+        st.session_state['Text Color'] = str(config['text_color']) if config['text_color'] is not None else "#000000"
+    if 'include_subscription' in config:
+        st.session_state['Include Subscription Section'] = bool(config['include_subscription'])
+    
+    # Apply header config (same as apply_template_to_session_state)
+    if 'pre_header_text' in header_config:
+        st.session_state['pre_header_text'] = header_config['pre_header_text']
+    if 'header_bg_color' in header_config:
+        st.session_state['header_bg_color'] = header_config['header_bg_color']
+    header_image_url_value = header_config.get('header_image_url')
+    header_image_base64_value = header_config.get('header_image_base64')
+    if header_image_url_value and str(header_image_url_value).strip():
+        st.session_state['header_image_url'] = str(header_image_url_value).strip()
+        st.session_state['header_image_source'] = "External URL"
+    elif header_image_base64_value and str(header_image_base64_value).strip():
+        st.session_state['header_image_base64'] = str(header_image_base64_value).strip()
+        st.session_state['header_image_source'] = "Upload Image (Base64)"
+    if 'image_width' in header_config:
+        st.session_state['header_image_width'] = int(header_config['image_width'])
+    if 'header_title' in header_config:
+        st.session_state['header_title'] = str(header_config['header_title']) if header_config['header_title'] is not None else ""
+    if 'header_text' in header_config:
+        header_text_value = str(header_config['header_text']) if header_config['header_text'] is not None else ""
+        st.session_state['_header_text_temp'] = header_text_value
+        if 'header_text' in st.session_state:
+            del st.session_state['header_text']
+        st.session_state['header_text'] = header_text_value
+    if 'title_color' in header_config:
+        st.session_state['header_title_color'] = str(header_config['title_color']) if header_config.get('title_color') is not None else "#000000"
+    if 'title_font_size' in header_config:
+        st.session_state['header_title_font_size'] = int(header_config['title_font_size'])
+    if 'title_bold' in header_config:
+        st.session_state['header_title_bold'] = bool(header_config['title_bold'])
+    if 'text_color' in header_config:
+        st.session_state['header_text_color'] = str(header_config['text_color']) if header_config.get('text_color') is not None else "#000000"
+    if 'text_font_size' in header_config:
+        st.session_state['header_text_font_size'] = int(header_config['text_font_size'])
+    
+    # Apply layers (same as apply_template_to_session_state)
+    for i, layer in enumerate(layers, start=1):
+        if 'order' in layer:
+            st.session_state[f'layer_order_{i}'] = int(layer['order']) if layer['order'] is not None else i
+        if 'title' in layer:
+            st.session_state[f'title_{i}'] = layer['title']
+        if 'subtitle' in layer:
+            st.session_state[f'subtitle_{i}'] = layer['subtitle']
+        if 'subtitle2' in layer:
+            st.session_state[f'subtitle2_{i}'] = layer['subtitle2']
+        if 'content' in layer:
+            content_key = f'content_{i}'
+            content_value = str(layer['content']) if layer['content'] is not None else ""
+            st.session_state[f'_{content_key}_temp'] = content_value
+            if content_key in st.session_state:
+                del st.session_state[content_key]
+            st.session_state[content_key] = content_value
+        layer_image_url_value = layer.get('image_url')
+        layer_image_base64_value = layer.get('image_base64')
+        if layer_image_url_value and str(layer_image_url_value).strip():
+            st.session_state[f'image_url_{i}'] = str(layer_image_url_value).strip()
+            st.session_state[f'image_source_{i}'] = "External URL"
+        elif layer_image_base64_value and str(layer_image_base64_value).strip():
+            st.session_state[f'image_base64_{i}'] = str(layer_image_base64_value).strip()
+            st.session_state[f'image_source_{i}'] = "Upload Image (Base64)"
+        if 'image_alignment' in layer:
+            alignment_index = 0 if str(layer['image_alignment']).lower() == 'left' else 1
+            st.session_state[f'alignment_{i}'] = int(alignment_index)
+        if 'image_width' in layer:
+            st.session_state[f'image_width_{i}'] = int(layer['image_width'])
+        if 'padding' in layer:
+            st.session_state[f'padding_{i}'] = int(layer['padding'])
+        if 'link_url' in layer:
+            st.session_state[f'link_url_{i}'] = layer['link_url']
+        if 'title_color' in layer:
+            st.session_state[f'title_color_{i}'] = layer['title_color']
+        if 'subtitle_color' in layer:
+            st.session_state[f'subtitle_color_{i}'] = layer['subtitle_color']
+        if 'subtitle2_color' in layer:
+            st.session_state[f'subtitle2_color_{i}'] = layer['subtitle2_color']
+        if 'title_font_size' in layer:
+            st.session_state[f'title_font_size_{i}'] = int(layer['title_font_size'])
+        if 'title_bold' in layer:
+            st.session_state[f'title_bold_{i}'] = bool(layer['title_bold'])
+        if 'subtitle_font_size' in layer:
+            st.session_state[f'subtitle_font_size_{i}'] = int(layer['subtitle_font_size'])
+        if 'subtitle2_font_size' in layer:
+            st.session_state[f'subtitle2_font_size_{i}'] = int(layer['subtitle2_font_size'])
+        if 'subtitle_bold' in layer:
+            st.session_state[f'subtitle_bold_{i}'] = bool(layer['subtitle_bold'])
+        if 'subtitle2_bold' in layer:
+            st.session_state[f'subtitle2_bold_{i}'] = bool(layer['subtitle2_bold'])
+        if 'content_font_size' in layer:
+            st.session_state[f'content_font_size_{i}'] = int(layer['content_font_size'])
+        if 'content_color' in layer:
+            st.session_state[f'content_color_{i}'] = layer['content_color']
+    
+    # Apply footer config (same as apply_template_to_session_state)
+    if 'footer_bg_color' in footer_config:
+        st.session_state['footer_bg_color'] = footer_config['footer_bg_color']
+    footer_image_url_value = footer_config.get('footer_image_url')
+    footer_image_base64_value = footer_config.get('footer_image_base64')
+    if 'footer_image_position' in footer_config:
+        footer_pos_map = {
+            "above text": "Above Text",
+            "after text": "After Text"
+        }
+        raw_footer_pos = footer_config['footer_image_position']
+        normalized_footer_pos = footer_pos_map.get(str(raw_footer_pos).strip().lower(), "Above Text") if raw_footer_pos is not None else "Above Text"
+        st.session_state['footer_image_position'] = normalized_footer_pos
+    if footer_image_url_value and str(footer_image_url_value).strip():
+        st.session_state['footer_image_url'] = str(footer_image_url_value).strip()
+        st.session_state['footer_image_source'] = "External URL"
+    elif footer_image_base64_value and str(footer_image_base64_value).strip():
+        st.session_state['footer_image_base64'] = str(footer_image_base64_value).strip()
+        st.session_state['footer_image_source'] = "Upload Image (Base64)"
+    if 'image_width' in footer_config:
+        st.session_state['footer_image_width'] = int(footer_config['image_width'])
+    if 'footer_image_link_url' in footer_config:
+        st.session_state['footer_image_link_url'] = str(footer_config['footer_image_link_url']) if footer_config['footer_image_link_url'] is not None else ""
+    if 'footer_alignment' in footer_config:
+        alignment_map = {'left': 0, 'center': 1, 'right': 2, 'Left': 0, 'Center': 1, 'Right': 2}
+        alignment_value = str(footer_config['footer_alignment']).strip()
+        st.session_state['footer_alignment'] = int(alignment_map.get(alignment_value, 0))
+    if 'company_name' in footer_config:
+        st.session_state['footer_company_name'] = str(footer_config['company_name']) if footer_config['company_name'] is not None else ""
+    if 'address' in footer_config:
+        st.session_state['footer_address'] = str(footer_config['address']) if footer_config['address'] is not None else ""
+    if 'directors' in footer_config:
+        st.session_state['footer_directors'] = str(footer_config['directors']) if footer_config['directors'] is not None else ""
+    if 'company_name_color' in footer_config:
+        st.session_state['footer_company_name_color'] = footer_config['company_name_color']
+    if 'company_name_size' in footer_config:
+        st.session_state['footer_company_name_size'] = int(footer_config['company_name_size'])
+    if 'company_name_bold' in footer_config:
+        st.session_state['footer_company_name_bold'] = bool(footer_config['company_name_bold'])
+    if 'address_color' in footer_config:
+        st.session_state['footer_address_color'] = str(footer_config['address_color']) if footer_config['address_color'] is not None else "#000000"
+    if 'address_size' in footer_config:
+        st.session_state['footer_address_size'] = int(footer_config['address_size'])
+    if 'address_bold' in footer_config:
+        st.session_state['footer_address_bold'] = bool(footer_config['address_bold'])
+    if 'directors_color' in footer_config:
+        st.session_state['footer_directors_color'] = str(footer_config['directors_color']) if footer_config['directors_color'] is not None else "#000000"
+    if 'directors_size' in footer_config:
+        st.session_state['footer_directors_size'] = int(footer_config['directors_size'])
+    if 'directors_bold' in footer_config:
+        st.session_state['footer_directors_bold'] = bool(footer_config['directors_bold'])
+    has_social_images = any([
+        footer_config.get('facebook_image_base64'),
+        footer_config.get('linkedin_image_base64'),
+        footer_config.get('xing_image_base64'),
+        footer_config.get('instagram_image_base64')
+    ])
+    if 'social_media_type' in footer_config:
+        social_media_type_str = str(footer_config['social_media_type'])
+        if has_social_images:
+            st.session_state['footer_social_type'] = "Images"
+        else:
+            st.session_state['footer_social_type'] = social_media_type_str if social_media_type_str in ["URLs Only", "Images"] else "URLs Only"
+    elif has_social_images:
+        st.session_state['footer_social_type'] = "Images"
+    if 'social_media_label' in footer_config:
+        st.session_state['footer_social_label'] = footer_config['social_media_label']
+    if 'social_label_color' in footer_config:
+        st.session_state['footer_social_label_color'] = footer_config['social_label_color']
+    if 'social_label_size' in footer_config:
+        st.session_state['footer_social_label_size'] = int(footer_config['social_label_size'])
+    if 'social_label_bold' in footer_config:
+        st.session_state['footer_social_label_bold'] = bool(footer_config['social_label_bold'])
+    if 'social_image_width' in footer_config:
+        width = footer_config['social_image_width']
+        if width is not None:
+            st.session_state['footer_social_image_width'] = int(width)
+    if 'facebook_url' in footer_config:
+        st.session_state['footer_facebook'] = footer_config['facebook_url']
+    if 'facebook_image_base64' in footer_config and footer_config.get('facebook_image_base64'):
+        st.session_state['footer_facebook_image_base64'] = footer_config['facebook_image_base64']
+    if 'linkedin_url' in footer_config:
+        st.session_state['footer_linkedin'] = footer_config['linkedin_url']
+    if 'linkedin_image_base64' in footer_config and footer_config.get('linkedin_image_base64'):
+        st.session_state['footer_linkedin_image_base64'] = footer_config['linkedin_image_base64']
+    if 'xing_url' in footer_config:
+        st.session_state['footer_xing'] = footer_config['xing_url']
+    if 'xing_image_base64' in footer_config and footer_config.get('xing_image_base64'):
+        st.session_state['footer_xing_image_base64'] = footer_config['xing_image_base64']
+    if 'instagram_url' in footer_config:
+        st.session_state['footer_instagram'] = footer_config['instagram_url']
+    if 'instagram_image_base64' in footer_config and footer_config.get('instagram_image_base64'):
+        st.session_state['footer_instagram_image_base64'] = footer_config['instagram_image_base64']
+    
+    # Apply subscription config (same as apply_template_to_session_state)
+    if subscription_config:
+        if 'company_name' in subscription_config:
+            st.session_state['company_name'] = subscription_config['company_name']
+        if 'address' in subscription_config:
+            st.session_state['address'] = subscription_config['address']
+        if 'copyright_text' in subscription_config:
+            st.session_state['copyright_text'] = subscription_config['copyright_text']
+        if 'disclaimer_text' in subscription_config:
+            st.session_state['disclaimer_text'] = subscription_config['disclaimer_text']
+        if 'unsubscribe_link' in subscription_config:
+            st.session_state['unsubscribe_link'] = subscription_config['unsubscribe_link']
+        if 'view_online_link' in subscription_config:
+            st.session_state['view_online_link'] = subscription_config['view_online_link']
+        if 'footer_color' in subscription_config:
+            st.session_state['footer_color'] = subscription_config['footer_color']
+
+
 def apply_template_to_session_state(template_data: dict):
     """
     Apply loaded template data to Streamlit session_state.
@@ -2797,11 +3581,12 @@ def main():
     st.title("📧 Newsletter Builder")
     st.markdown("Create responsive HTML newsletters with dynamic content layers")
     
-    # Show template save/load/delete success message at the top if available
+    # Show template save/load/delete/import success message at the top if available
     # Messages auto-disappear after 10 seconds
     show_temp_success('template_save_success_message', 'template_save_success_message_time')
     show_temp_success('template_load_success_message', 'template_load_success_message_time')
     show_temp_success('template_delete_success_message', 'template_delete_success_message_time')
+    show_temp_success('template_import_success_message', 'template_import_success_message_time')
     
     # Note: Messages will automatically disappear after 10 seconds on the next user interaction
     # This is the standard Streamlit behavior - the page re-renders when user interacts with any widget
