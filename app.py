@@ -1345,12 +1345,21 @@ def parse_html_template(html_content: str) -> Optional[Dict]:
                     else:
                         header_config['header_image_url'] = src
                         header_config['header_image_source'] = "External URL"
-                    # Extract width
-                    style = img.get('style', '')
-                    width_match = re.search(r'max-width:\s*(\d+)px', style)
-                    if width_match:
-                        header_image_width = int(width_match.group(1))
-                    header_config['header_image_width'] = header_image_width
+                    # Extract width - check both attribute and style
+                    width_attr = img.get('width')
+                    if width_attr:
+                        try:
+                            header_image_width = int(width_attr)
+                        except (ValueError, TypeError):
+                            pass
+                    else:
+                        # Try to extract from style (max-width or width)
+                        style = img.get('style', '')
+                        width_match = re.search(r'(?:max-width|width):\s*(\d+)px', style)
+                        if width_match:
+                            header_image_width = int(width_match.group(1))
+                    # Normalize key to match application expectations
+                    header_config['image_width'] = header_image_width
                     break
         
         # Find header title (h1 in header_template tr)
@@ -1469,9 +1478,24 @@ def parse_html_template(html_content: str) -> Optional[Dict]:
                     else:
                         layer['image_url'] = src
                         layer['image_source'] = "External URL"
-                    width_match = re.search(r'width="(\d+)"', str(img))
-                    if width_match:
-                        layer['image_width'] = int(width_match.group(1))
+                    # Extract width - check both attribute and style
+                    width_attr = img.get('width')
+                    if width_attr:
+                        try:
+                            layer['image_width'] = int(width_attr)
+                        except (ValueError, TypeError):
+                            pass
+                    else:
+                        # Try to extract from style (width or max-width)
+                        style = img.get('style', '')
+                        width_match = re.search(r'(?:width|max-width):\s*(\d+)px', style)
+                        if width_match:
+                            layer['image_width'] = int(width_match.group(1))
+                        else:
+                            # Fallback: try to extract from string representation
+                            width_match = re.search(r'width="(\d+)"', str(img))
+                            if width_match:
+                                layer['image_width'] = int(width_match.group(1))
             
             # Extract link URL if present
             link = inner_table.find('a')
@@ -1581,9 +1605,24 @@ def parse_html_template(html_content: str) -> Optional[Dict]:
                         else:
                             footer_config['footer_image_url'] = src
                             footer_config['footer_image_source'] = "External URL"
-                        width_match = re.search(r'width="(\d+)"', str(footer_img))
-                        if width_match:
-                            footer_config['footer_image_width'] = int(width_match.group(1))
+                        # Extract width - check both attribute and style
+                        width_attr = footer_img.get('width')
+                        if width_attr:
+                            try:
+                                footer_config['image_width'] = int(width_attr)
+                            except (ValueError, TypeError):
+                                pass
+                        else:
+                            # Try to extract from style (width or max-width)
+                            style = footer_img.get('style', '')
+                            width_match = re.search(r'(?:width|max-width):\s*(\d+)px', style)
+                            if width_match:
+                                footer_config['image_width'] = int(width_match.group(1))
+                            else:
+                                # Fallback: try to extract from string representation
+                                width_match = re.search(r'width="(\d+)"', str(footer_img))
+                                if width_match:
+                                    footer_config['image_width'] = int(width_match.group(1))
                 
                 # Extract company name, address, directors
                 ps = footer_td.find_all('p')
