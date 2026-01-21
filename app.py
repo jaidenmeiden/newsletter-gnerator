@@ -53,7 +53,7 @@ def apply_reset_defaults():
         "header_image_url": "",
         "header_image_base64": None,
         "header_image_source": "External URL",
-        "header_image_width": 600,
+        "header_image_width": 1000,
         "header_title": "",
         "header_title_color": "#000000",
         "header_title_font_size": 28,
@@ -100,8 +100,8 @@ def apply_reset_defaults():
         "image_base64": None,
         "image_source": "External URL",
         "alignment": 0,
-        "image_width": 600,
-        "padding": 0,
+        "image_width": 210,
+        "padding": 30,
     }
     for i in range(1, n_layers + 1):
         st.session_state[f"layer_order_{i}"] = i
@@ -155,7 +155,7 @@ def apply_reset_defaults():
         "footer_social_label_size": 14,
         "footer_social_label_bold": True,
         "footer_social_type": "URLs Only",
-        "footer_social_image_width": 32,
+        "footer_social_image_width": 30,
         "footer_facebook": "",
         "footer_facebook_image_base64": None,
         "footer_linkedin": "",
