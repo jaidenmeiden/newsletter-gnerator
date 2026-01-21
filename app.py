@@ -3881,7 +3881,14 @@ def main():
         
         # Download button
         st.subheader("Download Newsletter")
-        filename = f"{st.session_state['newsletter_subject'].replace(' ', '_')}_newsletter.html"
+        # Get template name from session_state (use working template name if loaded, otherwise use input field)
+        template_name = st.session_state.get("template_state_working") or st.session_state.get("template_name_input", "")
+        if template_name:
+            # Replace spaces with underscores
+            filename = f"{template_name.replace(' ', '_')}.html"
+        else:
+            # Fallback to subject if no template name available
+            filename = f"{st.session_state['newsletter_subject'].replace(' ', '_')}_newsletter.html"
         
         st.download_button(
             label="📥 Download HTML File",
