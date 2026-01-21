@@ -33,6 +33,8 @@ def apply_reset_defaults():
     st.session_state["template_state_selected"] = default_option
     # Legacy key for compatibility
     st.session_state["loaded_template_name"] = None
+    # Force a fresh key for the import file uploader so the previous file is cleared
+    st.session_state["import_template_uploader_key"] = f"import_template_file_{int(time.time() * 1000)}"
     
     def apply_defaults(mapping: Dict):
         for k, v in mapping.items():
@@ -1791,11 +1793,14 @@ def render_sidebar() -> Dict:
         
         # Import Template section
         st.subheader("📥 Import Template")
+        # Ensure uploader key exists so we can refresh it after import/reset
+        if "import_template_uploader_key" not in st.session_state:
+            st.session_state["import_template_uploader_key"] = "import_template_file_0"
         uploaded_file = st.file_uploader(
             "Select HTML Template File",
             type=['html', 'htm'],
             help="Upload an exported HTML newsletter template file",
-            key="import_template_file"
+            key=st.session_state["import_template_uploader_key"]
         )
         
         if st.button("📥 Import Template", type="primary", disabled=uploaded_file is None):
@@ -1813,6 +1818,8 @@ def render_sidebar() -> Dict:
                         
                         # Set flag to clean form first (like Clean Form button)
                         st.session_state['force_reset_fields'] = True
+                        # Refresh uploader key so the file input clears on next render
+                        st.session_state["import_template_uploader_key"] = f"import_template_file_{int(time.time() * 1000)}"
                         
                         # Store success message
                         st.session_state['template_import_success_message'] = f"✅ Template imported successfully from '{uploaded_file.name}'!"
