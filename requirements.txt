@@ -2,3 +2,4 @@ streamlit
 streamlit-quill
 Pillow
 pymongo
+beautifulsoup4
