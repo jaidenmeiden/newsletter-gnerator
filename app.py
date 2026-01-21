@@ -276,18 +276,16 @@ def quill_with_reset(
 
 def clean_quill_html(html: str) -> str:
     """
-    Remove empty paragraphs/br-only blocks that add extra vertical space.
+    Clean empty paragraphs but preserve intentional line breaks.
+    Converts <p><br></p> to <br> to preserve spacing.
     """
     if not html:
         return html
-    # Common empty blocks from Quill
-    replacements = [
-        "<p><br></p>",
-        "<p><br/></p>",
-        "<p><br /></p>",
-    ]
-    for token in replacements:
-        html = html.replace(token, "")
+    # Convert br-only paragraphs to simple br tags to preserve line breaks
+    # This preserves intentional spacing while cleaning up empty blocks
+    html = html.replace("<p><br></p>", "<br>")
+    html = html.replace("<p><br/></p>", "<br>")
+    html = html.replace("<p><br /></p>", "<br>")
     return html
 
 
@@ -643,10 +641,6 @@ class NewsletterGenerator:
             '.ql-align-center { text-align: center; }',
             '.ql-align-right { text-align: right; }',
             '.ql-align-justify { text-align: justify; }',
-            '.ql-content p { margin: 0 0 8px 0; line-height: 1.5; }',
-            '.ql-content h1, .ql-content h2, .ql-content h3, .ql-content h4, .ql-content h5, .ql-content h6 { margin: 0 0 10px 0; line-height: 1.3; }',
-            '.ql-content p:empty { margin: 0; height: 0; }',
-            '.ql-content p br:only-child { display: none; }',
             '</style>',
             '</head>',
             f'<body style="margin: 0; padding: 0; font-family: {font_family}; background-color: #FFFFFF;">',
@@ -877,7 +871,7 @@ class NewsletterGenerator:
                 # Clean empty paragraphs and wrap with scoped styles
                 cleaned_content = clean_quill_html(content)
                 html_parts.append(
-                    f'<div class="ql-content" style="color: {content_color}; font-size: {content_font_size}px; margin: 0;">{cleaned_content}</div>'
+                    f'<div style="color: {content_color}; font-size: {content_font_size}px; margin: 0; line-height: 1.5;">{cleaned_content}</div>'
                 )
             else:
                 # Plain text, convert newlines to <br> tags
@@ -980,7 +974,7 @@ class NewsletterGenerator:
                 # Content is HTML from the editor (usually starts with <p>)
                 cleaned_header = clean_quill_html(header_text)
                 html_parts.append(
-                    f'<div class="ql-content" style="color: {text_color}; font-size: {text_font_size}px; margin: 0;">{cleaned_header}</div>'
+                    f'<div style="color: {text_color}; font-size: {text_font_size}px; margin: 0; line-height: 1.5;">{cleaned_header}</div>'
                 )
             else:
                 # Plain text, convert newlines to <br> tags
@@ -1387,17 +1381,12 @@ def parse_html_template(html_content: str) -> Optional[Dict]:
                     header_config['title_bold'] = True
                 break
         
-        # Find header text (div with ql-content or any div or p in header_template tr)
+        # Find header text (div or p in header_template tr)
         header_text_div = None
         for tr in header_trs:
             td = tr.find('td')
             if td:
-                # First try to find div with ql-content class
-                div = td.find('div', class_='ql-content')
-                if div:
-                    header_text_div = div
-                    break
-                # If not found, try any div with content
+                # Try to find any div with content
                 div = td.find('div')
                 if div and div.get_text(strip=True):
                     header_text_div = div
@@ -1557,11 +1546,8 @@ def parse_html_template(html_content: str) -> Optional[Dict]:
                 if weight_match:
                     layer['subtitle2_bold'] = weight_match.group(1) == '500'
             
-            # Extract content (div.ql-content or div or p)
-            content_div = inner_table.find('div', class_='ql-content')
-            if not content_div:
-                # Try to find any div with content
-                content_div = inner_table.find('div')
+            # Extract content (div or p)
+            content_div = inner_table.find('div')
             
             if content_div:
                 # Extract inner HTML content (preserving all HTML structure)
