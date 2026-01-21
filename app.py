@@ -1387,15 +1387,22 @@ def parse_html_template(html_content: str) -> Optional[Dict]:
                     header_config['title_bold'] = True
                 break
         
-        # Find header text (div with ql-content or p in header_template tr)
+        # Find header text (div with ql-content or any div or p in header_template tr)
         header_text_div = None
         for tr in header_trs:
             td = tr.find('td')
             if td:
+                # First try to find div with ql-content class
                 div = td.find('div', class_='ql-content')
                 if div:
                     header_text_div = div
                     break
+                # If not found, try any div with content
+                div = td.find('div')
+                if div and div.get_text(strip=True):
+                    header_text_div = div
+                    break
+                # Fallback to p tag
                 p = td.find('p')
                 if p and p.get_text(strip=True):
                     header_text_div = p
@@ -1404,11 +1411,14 @@ def parse_html_template(html_content: str) -> Optional[Dict]:
         if header_text_div:
             # Clean up the HTML - extract inner HTML content
             if header_text_div.name == 'div':
-                # For div, get the inner HTML
-                header_text_html = ''.join(str(child) for child in header_text_div.children)
+                # For div, get the inner HTML (all content inside, preserving structure)
+                header_text_html = header_text_div.decode_contents()
             elif header_text_div.name == 'p':
-                # For p, get the text or inner HTML
-                header_text_html = header_text_div.get_text(strip=True)
+                # For p, get the inner HTML content
+                header_text_html = header_text_div.decode_contents()
+            else:
+                # Fallback: get inner HTML
+                header_text_html = header_text_div.decode_contents()
             header_config['header_text'] = header_text_html
             style = header_text_div.get('style', '')
             color_match = re.search(r'color:\s*([^;]+)', style)
@@ -1547,11 +1557,15 @@ def parse_html_template(html_content: str) -> Optional[Dict]:
                 if weight_match:
                     layer['subtitle2_bold'] = weight_match.group(1) == '500'
             
-            # Extract content (div.ql-content or p)
+            # Extract content (div.ql-content or div or p)
             content_div = inner_table.find('div', class_='ql-content')
+            if not content_div:
+                # Try to find any div with content
+                content_div = inner_table.find('div')
+            
             if content_div:
-                # Extract inner HTML content (not the div wrapper)
-                layer['content'] = ''.join(str(child) for child in content_div.children)
+                # Extract inner HTML content (preserving all HTML structure)
+                layer['content'] = content_div.decode_contents()
                 style = content_div.get('style', '')
                 color_match = re.search(r'color:\s*([^;]+)', style)
                 if color_match:
@@ -1561,9 +1575,11 @@ def parse_html_template(html_content: str) -> Optional[Dict]:
                 if size_match:
                     layer['content_font_size'] = int(size_match.group(1))
             else:
+                # Try to find p tag
                 p = inner_table.find('p')
                 if p:
-                    layer['content'] = p.get_text(strip=True)
+                    # Get inner HTML content, not just text
+                    layer['content'] = p.decode_contents()
                     style = p.get('style', '')
                     color_match = re.search(r'color:\s*([^;]+)', style)
                     if color_match:
@@ -1629,14 +1645,16 @@ def parse_html_template(html_content: str) -> Optional[Dict]:
                 # Extract company name, address, directors
                 ps = footer_td.find_all('p')
                 for p in ps:
-                    text = p.get_text(strip=True)
+                    # Get HTML content to preserve formatting
+                    html_content = p.decode_contents()
+                    text_content = p.get_text(strip=True)
                     style = p.get('style', '')
                     size_match = re.search(r'font-size:\s*(\d+)px', style)
                     if size_match:
                         size = int(size_match.group(1))
                         # Company name is usually first, address second, directors third
                         if not footer_config.get('company_name') and size >= 12:
-                            footer_config['company_name'] = text
+                            footer_config['company_name'] = html_content
                             color_match = re.search(r'color:\s*([^;]+)', style)
                             if color_match:
                                 footer_config['company_name_color'] = color_match.group(1).strip()
@@ -1644,8 +1662,8 @@ def parse_html_template(html_content: str) -> Optional[Dict]:
                             weight_match = re.search(r'font-weight:\s*(\d+)', style)
                             if weight_match:
                                 footer_config['company_name_bold'] = weight_match.group(1) == '700'
-                        elif not footer_config.get('address') and text and '\n' in text:
-                            footer_config['address'] = text
+                        elif not footer_config.get('address') and text_content and ('\n' in text_content or '<br' in html_content):
+                            footer_config['address'] = html_content
                             color_match = re.search(r'color:\s*([^;]+)', style)
                             if color_match:
                                 footer_config['address_color'] = color_match.group(1).strip()
@@ -1654,7 +1672,7 @@ def parse_html_template(html_content: str) -> Optional[Dict]:
                             if weight_match:
                                 footer_config['address_bold'] = weight_match.group(1) == '700'
                         elif not footer_config.get('directors'):
-                            footer_config['directors'] = text
+                            footer_config['directors'] = html_content
                             color_match = re.search(r'color:\s*([^;]+)', style)
                             if color_match:
                                 footer_config['directors_color'] = color_match.group(1).strip()
@@ -1666,7 +1684,7 @@ def parse_html_template(html_content: str) -> Optional[Dict]:
                 # Extract social media
                 social_label_p = footer_td.find('p')
                 if social_label_p and 'social' in social_label_p.get_text(strip=True).lower():
-                    footer_config['social_media_label'] = social_label_p.get_text(strip=True)
+                    footer_config['social_media_label'] = social_label_p.decode_contents()
                     style = social_label_p.get('style', '')
                     color_match = re.search(r'color:\s*([^;]+)', style)
                     if color_match:
