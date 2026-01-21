@@ -734,7 +734,7 @@ class NewsletterGenerator:
         has_link = bool(link_url)
         
         # Layer container with padding
-        html_parts.append('<tr>')
+        html_parts.append('<tr class="layer_template">')
         html_parts.append(f'<td style="padding: {padding}px 20px;">')
         
         # Create table for image and text layout
@@ -901,7 +901,7 @@ class NewsletterGenerator:
         # 1. Pre-Header Text (Hidden text for email preview) - Only if provided
         pre_header_text = header_config.get('pre_header_text', '').strip()
         if pre_header_text:  # Only include if the user fills it
-            html_parts.append('<tr>')
+            html_parts.append('<tr class="header_template">')
             # Email styles to hide text but make it readable for pre-header
             html_parts.append(
                 '<td style="padding: 0; font-size: 0; line-height: 0; display: none !important; '
@@ -942,7 +942,7 @@ class NewsletterGenerator:
         
         # 2.1. Image Row (if image provided)
         if image_src:
-            html_parts.append('<tr>')
+            html_parts.append('<tr class="header_template">')
             html_parts.append('<td style="padding: 0; margin: 0;">')
             html_parts.append(
                 f'<img src="{image_src}" alt="{header_title}" '
@@ -952,7 +952,7 @@ class NewsletterGenerator:
             html_parts.append('</tr>')
         
         # 2.2. Blank Space Row
-        html_parts.append('<tr>')
+        html_parts.append('<tr class="header_template">')
         html_parts.append(f'<td style="padding: 20px 20px; background-color: {header_bg_color};">')
         html_parts.append('&nbsp;')  # Blank space
         html_parts.append('</td>')
@@ -960,7 +960,7 @@ class NewsletterGenerator:
         
         # 2.3. Title Row
         if header_title:
-            html_parts.append('<tr>')
+            html_parts.append('<tr class="header_template">')
             html_parts.append(f'<td style="padding: 0 20px 10px 20px; background-color: {header_bg_color};">')
             html_parts.append(
                 f'<h1 style="color: {title_color}; font-size: {title_font_size}px; margin: 0; font-weight: {title_weight}; line-height: 1.3;">{header_title}</h1>'
@@ -970,7 +970,7 @@ class NewsletterGenerator:
         
         # 2.4. Header Text Row
         if header_text:
-            html_parts.append('<tr>')
+            html_parts.append('<tr class="header_template">')
             html_parts.append(f'<td style="padding: 0 20px 20px 20px; background-color: {header_bg_color};">')
             
             # Check if header_text is HTML (from rich text editor)
@@ -1063,7 +1063,7 @@ class NewsletterGenerator:
             html_parts.append('</div>')
         
         # Footer container with alignment
-        html_parts.append('<tr>')
+        html_parts.append('<tr class="footer_template">')
         html_parts.append(f'<td style="padding: 30px 20px; background-color: {footer_bg_color}; {align_style}">')
         
         # Image before text
