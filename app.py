@@ -184,6 +184,13 @@ def apply_reset_defaults():
             del st.session_state[k]
     
     st.session_state['force_reset_fields'] = False
+    
+    # After reset, check if there's imported template data to apply
+    if st.session_state.get('pending_imported_template_data'):
+        template_data = st.session_state['pending_imported_template_data']
+        apply_imported_template_to_session_state(template_data)
+        # Clear the pending data
+        del st.session_state['pending_imported_template_data']
 
 
 def show_temp_success(message_key: str, time_key: str, timeout: int = 10):
@@ -1775,25 +1782,21 @@ def render_sidebar() -> Dict:
                     # Read the HTML content
                     html_content = uploaded_file.read().decode('utf-8')
                     
-                    # First, clean the form (execute Clean Form process)
-                    st.session_state['force_reset_fields'] = True
-                    apply_reset_defaults()
-                    
                     # Parse the HTML and extract configuration
                     template_data = parse_html_template(html_content)
                     
                     if template_data:
-                        # Apply the parsed data to session_state (without setting mode to "loaded")
-                        apply_imported_template_to_session_state(template_data)
+                        # Store the parsed data in session_state to apply after reset
+                        st.session_state['pending_imported_template_data'] = template_data
+                        
+                        # Set flag to clean form first (like Clean Form button)
+                        st.session_state['force_reset_fields'] = True
                         
                         # Store success message
                         st.session_state['template_import_success_message'] = f"✅ Template imported successfully from '{uploaded_file.name}'!"
                         st.session_state['template_import_success_message_time'] = time.time()
                         
-                        # Clear the uploaded file from session state
-                        st.session_state['import_template_file'] = None
-                        
-                        # Rerun to show the imported data
+                        # Rerun to apply reset and then import data
                         rerun_after("import_template_success")
                     else:
                         st.error("⚠️ Failed to parse the HTML template. Please ensure it's a valid exported newsletter file.")
@@ -1804,7 +1807,6 @@ def render_sidebar() -> Dict:
         
         if st.button("🧹 Clean Form", type="secondary"):
             st.session_state['force_reset_fields'] = True
-            st.experimental_set_query_params(reset=str(int(time.time() * 1000)))
             rerun_after("clean_form")
         
         email_subject = st.text_input(
@@ -3733,7 +3735,6 @@ def main():
                                 set_mode_new(default_option)
                                 # Apply full clean like "Clean Form"
                                 st.session_state['force_reset_fields'] = True
-                                st.experimental_set_query_params(reset=str(int(time.time() * 1000)))
                                 # Rerun to refresh template list and show message
                                 rerun_after("delete_template_success")
                             else:
