@@ -3892,7 +3892,7 @@ def main():
         template_name = st.session_state.get("template_state_working") or st.session_state.get("template_name_input", "")
         if template_name:
             # Replace spaces with underscores
-            filename = f"{template_name.replace(' ', '_')}.html"
+            filename = f"newsletter_{template_name.replace(' ', '_')}.html"
         else:
             # Fallback to subject if no template name available
             filename = f"{st.session_state['newsletter_subject'].replace(' ', '_')}_no_name.html"
